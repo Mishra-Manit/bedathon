@@ -23,6 +23,7 @@ export interface ApartmentComplex {
   distance_to_burruss?: number;
   bus_stop_nearby?: boolean;
   address?: string;
+  image_url?: string;
   created_at: string;
   updated_at: string;
 }
@@ -164,6 +165,7 @@ export function formatApartmentForDisplay(apartment: ApartmentComplex) {
     securityDeposit: apartment.security_deposit || 'Contact for details',
     additionalFees: apartment.additional_fees || 'None',
     leaseType: apartment.lease_type || 'Contact for details',
-    leaseTerm: apartment.lease_term ? `${apartment.lease_term} months` : 'Contact for details'
+    leaseTerm: apartment.lease_term ? `${apartment.lease_term} months` : 'Contact for details',
+    imageUrl: apartment.image_url
   };
 }
