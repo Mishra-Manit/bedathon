@@ -7,13 +7,10 @@ httpx==0.25.2
 sqlmodel==0.0.16
 SQLAlchemy==2.0.32
 psycopg[binary]==3.2.10
-python-dotenv==1.0.0
 supabase==2.6.0
 PyJWT[crypto]==2.9.0
 cryptography==43.0.1
-<<<<<<< Updated upstream
+twilio==9.3.1
+// optional data libs if needed later
 pandas==2.1.4
 openpyxl==3.1.2
-=======
-twilio==9.3.1
->>>>>>> Stashed changes
