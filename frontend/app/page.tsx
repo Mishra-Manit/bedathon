@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { supabase } from "@/lib/supabaseClient"
+import type { User } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -15,6 +17,7 @@ import { MessageCircle, Heart, X, MapPin, Star, Send, Moon, Sun } from "lucide-r
 
 export default function HokieNest() {
   const [currentView, setCurrentView] = useState<"landing" | "onboarding" | "dashboard">("landing")
+  const [user, setUser] = useState<User | null>(null)
   const [selectedProperty, setSelectedProperty] = useState<any>(null)
   const [chatOpen, setChatOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
@@ -25,6 +28,45 @@ export default function HokieNest() {
     socialLevel: [3],
     sleepSchedule: [3],
   })
+
+  useEffect(() => {
+    let isMounted = true
+    ;(async () => {
+      const { data } = await supabase.auth.getSession()
+      if (isMounted) {
+        setUser(data.session?.user ?? null)
+        if (data.session?.user) {
+          setCurrentView("dashboard")
+        }
+      }
+    })()
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        setCurrentView("dashboard")
+      } else {
+        setCurrentView("landing")
+      }
+    })
+    return () => {
+      authListener.subscription.unsubscribe()
+      isMounted = false
+    }
+  }, [])
+
+  const signInWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+      },
+    })
+  }
+
+  const signOut = async () => {
+    await supabase.auth.signOut()
+    setCurrentView("landing")
+  }
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode)
@@ -38,7 +80,7 @@ export default function HokieNest() {
       name: "Sarah Chen",
       major: "Computer Science",
       year: "Junior",
-      photo: "/college-student-portrait.png",
+      photo: "/person-placeholder-1.png",
       compatibility: 92,
       matchingPrefs: ["Clean", "Quiet", "Early Bird"],
     },
@@ -47,7 +89,7 @@ export default function HokieNest() {
       name: "Mike Johnson",
       major: "Engineering",
       year: "Sophomore",
-      photo: "/college-student-portrait.png",
+      photo: "/person-placeholder-2.png",
       compatibility: 87,
       matchingPrefs: ["Social", "Study Groups", "Night Owl"],
     },
@@ -56,7 +98,7 @@ export default function HokieNest() {
       name: "Emma Davis",
       major: "Business",
       year: "Senior",
-      photo: "/college-student-portrait.png",
+      photo: "/person-placeholder-3.png",
       compatibility: 84,
       matchingPrefs: ["Organized", "Moderate Social", "Balanced"],
     },
@@ -108,9 +150,11 @@ export default function HokieNest() {
                 <Button variant="ghost" size="sm" onClick={toggleDarkMode} className="w-9 h-9 p-0">
                   {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </Button>
-                <Button variant="outline" onClick={() => setCurrentView("onboarding")}>
-                  Sign In
-                </Button>
+                {user ? (
+                  <Button variant="outline" onClick={() => setCurrentView("dashboard")}>Dashboard</Button>
+                ) : (
+                  <Button variant="outline" onClick={signInWithGoogle}>Sign in with Google</Button>
+                )}
               </div>
             </div>
           </div>
@@ -134,9 +178,9 @@ export default function HokieNest() {
               <Button
                 size="lg"
                 className="text-lg px-10 py-6 h-auto font-medium shadow-lg hover:shadow-xl transition-all duration-150"
-                onClick={() => setCurrentView("onboarding")}
+                onClick={() => (user ? setCurrentView("dashboard") : signInWithGoogle())}
               >
-                Find Roommates
+                {user ? "Go to Dashboard" : "Find Roommates"}
               </Button>
               <Button
                 size="lg"
@@ -405,9 +449,11 @@ export default function HokieNest() {
                   </div>
                 </SheetContent>
               </Sheet>
-              <Button variant="ghost" onClick={() => setCurrentView("landing")}>
-                Sign Out
-              </Button>
+              {user ? (
+                <Button variant="ghost" onClick={signOut}>Sign Out</Button>
+              ) : (
+                <Button variant="ghost" onClick={signInWithGoogle}>Sign In</Button>
+              )}
             </div>
           </div>
         </div>
