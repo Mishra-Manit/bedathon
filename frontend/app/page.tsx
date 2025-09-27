@@ -13,7 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { MessageCircle, Heart, X, MapPin, Star, Send, Moon, Sun } from "lucide-react"
+import { MessageCircle, Heart, X, MapPin, Star, Send, Moon, Sun, Loader2, Phone, CheckCircle, XCircle, AlertCircle, Home } from "lucide-react"
+import { useApartments } from "@/lib/useApartments"
+import { formatApartmentForDisplay } from "@/lib/apartmentService"
 
 export default function HokieNest() {
   const [currentView, setCurrentView] = useState<"landing" | "onboarding" | "dashboard">("landing")
@@ -21,6 +23,9 @@ export default function HokieNest() {
   const [selectedProperty, setSelectedProperty] = useState<any>(null)
   const [chatOpen, setChatOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
+  
+  // Fetch apartment data
+  const { apartments, loading: apartmentsLoading, error: apartmentsError } = useApartments()
   const [preferences, setPreferences] = useState({
     cleanliness: [3],
     noiseLevel: [3],
@@ -104,38 +109,8 @@ export default function HokieNest() {
     },
   ]
 
-  const properties = [
-    {
-      id: 1,
-      address: "123 College Ave",
-      price: "$800/month",
-      bedrooms: 2,
-      bathrooms: 1,
-      distance: "0.5 miles to campus",
-      rating: 4.5,
-      photo: "/college-apartment-exterior.jpg",
-      nearby: [
-        { place: "Drillfield", time: "5 min walk" },
-        { place: "D2 Dining", time: "3 min walk" },
-        { place: "Kroger", time: "10 min walk" },
-      ],
-    },
-    {
-      id: 2,
-      address: "456 University Blvd",
-      price: "$950/month",
-      bedrooms: 3,
-      bathrooms: 2,
-      distance: "0.8 miles to campus",
-      rating: 4.2,
-      photo: "/college-apartment-exterior.jpg",
-      nearby: [
-        { place: "Squires Center", time: "8 min walk" },
-        { place: "Turner Place", time: "5 min walk" },
-        { place: "CVS Pharmacy", time: "12 min walk" },
-      ],
-    },
-  ]
+  // Format apartments for display
+  const properties = apartments.map(apartment => formatApartmentForDisplay(apartment))
 
   if (currentView === "landing") {
     return (
@@ -520,22 +495,38 @@ export default function HokieNest() {
 
           <TabsContent value="housing" className="mt-12">
             <div className="space-y-8">
-              {properties.map((property) => (
+              {apartmentsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-2">Loading apartments...</span>
+                </div>
+              ) : apartmentsError ? (
+                <div className="text-center py-12">
+                  <AlertCircle className="h-12 w-12 mx-auto text-red-500 mb-4" />
+                  <p className="text-red-500">Error loading apartments: {apartmentsError}</p>
+                </div>
+              ) : properties.length === 0 ? (
+                <div className="text-center py-12">
+                  <Home className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No apartments found</p>
+                </div>
+              ) : (
+                properties.map((property) => (
                 <Card key={property.id} className="p-8 card-hover border-border/50">
                   <div className="flex gap-8">
                     <img
-                      src={property.photo || "/placeholder.svg"}
-                      alt={property.address}
+                      src="/college-apartment-exterior.jpg"
+                      alt={property.name}
                       className="w-56 h-40 rounded-lg object-cover border border-border/20"
                     />
                     <div className="flex-1">
                       <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-2xl font-bold tracking-tight">{property.address}</h3>
+                        <h3 className="text-2xl font-bold tracking-tight">{property.name}</h3>
                         <span className="text-3xl font-bold text-primary">{property.price}</span>
                       </div>
 
                       <p className="text-muted-foreground mb-4 text-lg">
-                        {property.bedrooms} bed • {property.bathrooms} bath
+                        {property.bedrooms} • {property.address}
                       </p>
 
                       <div className="flex items-center gap-6 mb-6">
@@ -544,8 +535,12 @@ export default function HokieNest() {
                           <span className="text-sm">{property.distance}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm font-medium">{property.rating}</span>
+                          {property.busStop ? (
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-red-500" />
+                          )}
+                          <span className="text-sm font-medium">{property.busStop || 'No bus stop'}</span>
                         </div>
                       </div>
 
@@ -560,12 +555,12 @@ export default function HokieNest() {
                         </DialogTrigger>
                         <DialogContent className="max-w-3xl backdrop-blur-md bg-background/95">
                           <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold">{property.address}</DialogTitle>
+                            <DialogTitle className="text-2xl font-bold">{property.name}</DialogTitle>
                           </DialogHeader>
                           <div className="space-y-8">
                             <img
-                              src={property.photo || "/placeholder.svg"}
-                              alt={property.address}
+                              src="/college-apartment-exterior.jpg"
+                              alt={property.name}
                               className="w-full h-80 rounded-lg object-cover border border-border/20"
                             />
 
@@ -580,22 +575,70 @@ export default function HokieNest() {
                                     <span className="font-medium">Bedrooms:</span> {property.bedrooms}
                                   </p>
                                   <p>
-                                    <span className="font-medium">Bathrooms:</span> {property.bathrooms}
+                                    <span className="font-medium">Address:</span> {property.address}
                                   </p>
                                   <p>
                                     <span className="font-medium">Distance:</span> {property.distance}
+                                  </p>
+                                  <p>
+                                    <span className="font-medium">Lease Type:</span> {property.leaseType}
+                                  </p>
+                                  <p>
+                                    <span className="font-medium">Lease Term:</span> {property.leaseTerm}
                                   </p>
                                 </div>
                               </div>
 
                               <div>
-                                <h4 className="font-bold mb-4 text-lg">What's Nearby</h4>
+                                <h4 className="font-bold mb-4 text-lg">Amenities & Features</h4>
                                 <div className="space-y-2">
-                                  {property.nearby.map((item, index) => (
-                                    <p key={index} className="text-sm">
-                                      <span className="font-medium">{item.place}</span> - {item.time}
-                                    </p>
-                                  ))}
+                                  <p className="text-sm">
+                                    <span className="font-medium">Pets:</span> {property.pets}
+                                  </p>
+                                  <p className="text-sm">
+                                    <span className="font-medium">Parking:</span> {property.parking}
+                                  </p>
+                                  <p className="text-sm">
+                                    <span className="font-medium">Furniture:</span> {property.furniture}
+                                  </p>
+                                  <p className="text-sm">
+                                    <span className="font-medium">Laundry:</span> {property.laundry}
+                                  </p>
+                                  <p className="text-sm">
+                                    <span className="font-medium">Utilities:</span> {property.utilities}
+                                  </p>
+                                  <p className="text-sm">
+                                    <span className="font-medium">Bus Stop:</span> {property.busStop}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-8">
+                              <div>
+                                <h4 className="font-bold mb-4 text-lg">Contact & Fees</h4>
+                                <div className="space-y-2 text-sm">
+                                  <p>
+                                    <span className="font-medium">Phone:</span> {property.phone}
+                                  </p>
+                                  <p>
+                                    <span className="font-medium">Application Fee:</span> {property.applicationFee}
+                                  </p>
+                                  <p>
+                                    <span className="font-medium">Security Deposit:</span> {property.securityDeposit}
+                                  </p>
+                                  <p>
+                                    <span className="font-medium">Additional Fees:</span> {property.additionalFees}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div>
+                                <h4 className="font-bold mb-4 text-lg">Notes</h4>
+                                <div className="space-y-2">
+                                  <p className="text-sm text-muted-foreground">
+                                    {property.notes || 'No additional notes available'}
+                                  </p>
                                 </div>
                               </div>
                             </div>
@@ -615,7 +658,8 @@ export default function HokieNest() {
                     </div>
                   </div>
                 </Card>
-              ))}
+                ))
+              )}
             </div>
           </TabsContent>
 
