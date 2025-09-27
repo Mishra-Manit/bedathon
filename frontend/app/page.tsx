@@ -34,21 +34,51 @@ export default function HokieNest() {
     sleepSchedule: [3],
   })
 
+  const checkUserProfile = async (sessionUser: User | null) => {
+    try {
+      if (!sessionUser) return null
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
+      if (!token) return null
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      if (!resp.ok) return null
+      const profile = await resp.json()
+      if (!profile || (typeof profile === 'object' && Object.keys(profile).length === 0) || !profile.user_id) {
+        return null
+      }
+      return profile
+    } catch (e) {
+      console.error('checkUserProfile failed', e)
+      return null
+    }
+  }
+
   useEffect(() => {
     let isMounted = true
     ;(async () => {
       const { data } = await supabase.auth.getSession()
       if (isMounted) {
-        setUser(data.session?.user ?? null)
-        if (data.session?.user) {
-          setCurrentView("dashboard")
+        const sessionUser = data.session?.user ?? null
+        setUser(sessionUser)
+        if (sessionUser) {
+          const profile = await checkUserProfile(sessionUser)
+          setCurrentView(profile ? "dashboard" : "onboarding")
+        } else {
+          setCurrentView("landing")
         }
       }
     })()
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        setCurrentView("dashboard")
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const sessionUser = session?.user ?? null
+      setUser(sessionUser)
+      if (sessionUser) {
+        const profile = await checkUserProfile(sessionUser)
+        setCurrentView(profile ? "dashboard" : "onboarding")
       } else {
         setCurrentView("landing")
       }
@@ -76,6 +106,64 @@ export default function HokieNest() {
   const toggleDarkMode = () => {
     setDarkMode(!darkMode)
     document.documentElement.classList.toggle("dark")
+  }
+
+  // Submit onboarding → create profile in backend
+  const createProfile = async () => {
+    try {
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
+      if (!token) {
+        alert('You need to sign in first')
+        return
+      }
+
+      const name = (document.getElementById('name') as HTMLInputElement | null)?.value?.trim() || ''
+      // Normalize year to enum expected by backend
+      let yearInput = (document.getElementById('year') as HTMLInputElement | null)?.value?.trim() || 'Other'
+      const allowedYears = ['Freshman','Sophomore','Junior','Senior','Graduate','Other']
+      const normalized = yearInput.charAt(0).toUpperCase() + yearInput.slice(1).toLowerCase()
+      const year = allowedYears.includes(normalized) ? normalized : 'Other'
+      const budgetStr = (document.getElementById('budget') as HTMLInputElement | null)?.value || '1000'
+      const budget = Number(String(budgetStr).replace(/[^0-9]/g, '')) || 1000
+      const moveInVal = (document.getElementById('moveIn') as HTMLInputElement | null)?.value || ''
+      const move_in = moveInVal ? moveInVal : null
+
+      const body = {
+        name,
+        year,
+        major: null,
+        budget,
+        move_in,
+        tags: [],
+        cleanliness: preferences.cleanliness[0],
+        noise: preferences.noiseLevel[0],
+        study_time: preferences.studyTime[0],
+        social: preferences.socialLevel[0],
+        sleep: preferences.sleepSchedule[0],
+      }
+
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      })
+
+      if (!resp.ok) {
+        const text = await resp.text()
+        alert(`Failed to create profile: ${text}`)
+        return
+      }
+
+      alert('Profile created successfully!')
+      setCurrentView('dashboard')
+    } catch (e) {
+      console.error('createProfile failed', e)
+      alert('Failed to create profile. Please try again.')
+    }
   }
 
   // Mock data
@@ -368,7 +456,7 @@ export default function HokieNest() {
               <Button
                 size="lg"
                 className="px-16 py-6 h-auto text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-150"
-                onClick={() => setCurrentView("dashboard")}
+                onClick={createProfile}
               >
                 Create Profile
               </Button>
