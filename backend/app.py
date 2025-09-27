@@ -5,10 +5,16 @@ import anthropic
 import os
 from dotenv import load_dotenv
 from typing import List, Optional, Dict, Any
+<<<<<<< Updated upstream
 from agent import ClaudeAgent, AgentRequest, AgentResponse
 from supabase_utils import get_current_user
 from sqlmodel import Session, create_engine, select
 from models import ApartmentComplex, ApartmentComplexRead, ApartmentComplexCreate
+=======
+from .agent import ClaudeAgent, AgentRequest, AgentResponse
+from .voiceagent.router import router as voice_router
+from .supabase_utils import get_current_user
+>>>>>>> Stashed changes
 
 load_dotenv()
 
@@ -102,6 +108,7 @@ async def clear_agent_history():
     agent.clear_history()
     return {"message": "Agent history cleared"}
 
+<<<<<<< Updated upstream
 # Apartment API endpoints
 @app.get("/apartments", response_model=List[ApartmentComplexRead])
 async def get_apartments(
@@ -214,6 +221,10 @@ async def import_apartments_data(session: Session = Depends(get_session)):
         return {"message": "Apartment data imported successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error importing apartment data: {str(e)}")
+=======
+# Mount voice agent routes
+app.include_router(voice_router)
+>>>>>>> Stashed changes
 
 if __name__ == "__main__":
     import uvicorn
