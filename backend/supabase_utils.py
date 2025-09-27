@@ -1,10 +1,11 @@
 import os
 from functools import lru_cache
-from typing import Optional
+from types import SimpleNamespace
+from typing import Optional, List, Dict, Any
 
 from dotenv import load_dotenv
 from fastapi import Header, HTTPException, status
-from supabase import Client, create_client
+import httpx
 
 
 # Load environment variables from .env if present
@@ -16,44 +17,85 @@ class MissingSupabaseConfig(Exception):
 
 
 @lru_cache(maxsize=1)
-def get_supabase_client() -> Client:
-    """Create and memoize the Supabase client.
+def get_supabase_config() -> Dict[str, str]:
+    """Fetch Supabase REST config from env.
 
-    Requires `SUPABASE_URL` and `SUPABASE_ANON_KEY` to be set in the environment.
+    Uses the service role if available, otherwise anon.
     """
     supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-
-    if not supabase_url or not supabase_key:
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    anon_key = os.getenv("SUPABASE_ANON_KEY")
+    api_key = service_key or anon_key
+    if not supabase_url or not api_key:
         raise MissingSupabaseConfig(
             "SUPABASE_URL and SUPABASE_ANON_KEY (or SUPABASE_SERVICE_ROLE_KEY) must be set"
         )
-
-    return create_client(supabase_url, supabase_key)
+    return {"url": supabase_url.rstrip("/"), "api_key": api_key}
 
 
 async def get_current_user(authorization: Optional[str] = Header(default=None)):
-    """FastAPI dependency that validates the Bearer token with Supabase and returns the user.
-
-    It uses Supabase Auth's `get_user` endpoint so we don't need to verify JWTs locally.
-    """
+    """Validate Bearer token by calling Supabase Auth REST and return a user-like object."""
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Bearer token")
-
     token = authorization.split(" ", 1)[1].strip()
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Bearer token")
 
-    client = get_supabase_client()
-    try:
-        res = client.auth.get_user(token)
-    except Exception:
+    cfg = get_supabase_config()
+    url = f"{cfg['url']}/auth/v1/user"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "apikey": cfg["api_key"],
+    }
+    async with httpx.AsyncClient(timeout=12) as client:
+        resp = await client.get(url, headers=headers)
+    if resp.status_code != 200:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+    data = resp.json()
+    # Return an object with attribute access similar to supabase-py user
+    return SimpleNamespace(**data)
 
-    user = getattr(res, "user", None)
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-    return user
+def profiles_select_by_user_id(user_id: str) -> List[Dict[str, Any]]:
+    """Return profile rows for a user_id using PostgREST."""
+    cfg = get_supabase_config()
+    url = f"{cfg['url']}/rest/v1/profiles?user_id=eq.{user_id}"
+    headers = {
+        "apikey": cfg["api_key"],
+        "Authorization": f"Bearer {cfg['api_key']}",
+        "Accept": "application/json",
+    }
+    resp = httpx.get(url, headers=headers, timeout=12)
+    resp.raise_for_status()
+    return resp.json() or []
 
+
+def profiles_insert(profile: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Insert a profile row via PostgREST and return inserted rows."""
+    cfg = get_supabase_config()
+    url = f"{cfg['url']}/rest/v1/profiles"
+    headers = {
+        "apikey": cfg["api_key"],
+        "Authorization": f"Bearer {cfg['api_key']}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+    resp = httpx.post(url, headers=headers, json=profile, timeout=12)
+    resp.raise_for_status()
+    return resp.json() if resp.content else []
+
+
+def profiles_update_by_user_id(user_id: str, updates: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Update profile(s) by user_id via PostgREST and return rows."""
+    cfg = get_supabase_config()
+    url = f"{cfg['url']}/rest/v1/profiles?user_id=eq.{user_id}"
+    headers = {
+        "apikey": cfg["api_key"],
+        "Authorization": f"Bearer {cfg['api_key']}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+    resp = httpx.patch(url, headers=headers, json=updates, timeout=12)
+    resp.raise_for_status()
+    return resp.json() if resp.content else []
 
