@@ -603,7 +603,7 @@ export default function HokieNest() {
                 <Card key={property.id} className="p-8 card-hover border-border/50">
                   <div className="flex gap-8">
                     <img
-                      src="/college-apartment-exterior.jpg"
+                      src={property.imageUrl || "/college-apartment-exterior.jpg"}
                       alt={property.name}
                       className="w-56 h-40 rounded-lg object-cover border border-border/20"
                     />
@@ -647,7 +647,7 @@ export default function HokieNest() {
                           </DialogHeader>
                           <div className="space-y-8">
                             <img
-                              src="/college-apartment-exterior.jpg"
+                              src={property.imageUrl || "/college-apartment-exterior.jpg"}
                               alt={property.name}
                               className="w-full h-80 rounded-lg object-cover border border-border/20"
                             />
