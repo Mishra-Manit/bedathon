@@ -5,21 +5,28 @@ from typing import Optional
 from dotenv import load_dotenv
 
 
-<<<<<<< Updated upstream
 # Load environment from backend/.env and backend/.env.local regardless of CWD
 _voiceagent_dir = os.path.dirname(__file__)
 _backend_dir = os.path.abspath(os.path.join(_voiceagent_dir, ".."))
 _env_path = os.path.join(_backend_dir, ".env")
 _env_local_path = os.path.join(_backend_dir, ".env.local")
 
-# Load base .env first, then optional .env.local (does not override OS env)
+# Load base .env first (no override), then .env.local with override=True
 if os.path.exists(_env_path):
     load_dotenv(_env_path, override=False)
 if os.path.exists(_env_local_path):
-    load_dotenv(_env_local_path, override=False)
-=======
-load_dotenv()
->>>>>>> Stashed changes
+    load_dotenv(_env_local_path, override=True)
+
+# Also load from voiceagent/.env and voiceagent/.env.local
+_va_env_path = os.path.join(_voiceagent_dir, ".env")
+_va_env_local_path = os.path.join(_voiceagent_dir, ".env.local")
+if os.path.exists(_va_env_path):
+    load_dotenv(_va_env_path, override=False)
+if os.path.exists(_va_env_local_path):
+    load_dotenv(_va_env_local_path, override=True)
+
+# Finally, fallback to current working directory `.env` search (does not override)
+load_dotenv(override=False)
 
 
 @dataclass

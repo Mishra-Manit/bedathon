@@ -6,6 +6,7 @@ from twilio.rest import Client as TwilioClient
 from twilio.twiml.voice_response import VoiceResponse
 
 from .config import get_twilio_settings
+import os
 
 
 router = APIRouter(prefix="/voice", tags=["voice"])
@@ -64,4 +65,15 @@ async def answer_call(request: Request, prompt: Optional[str] = None):
     response.hangup()
     return Response(content=str(response), media_type="application/xml")
 
+
+@router.get("/env-check")
+def env_check():
+    """Return presence (not values) of required Twilio env vars to aid debugging."""
+    present = {
+        "TWILIO_ACCOUNT_SID": bool(os.getenv("TWILIO_ACCOUNT_SID", "").strip()),
+        "TWILIO_AUTH_TOKEN": bool(os.getenv("TWILIO_AUTH_TOKEN", "").strip()),
+        "TWILIO_FROM_NUMBER": bool(os.getenv("TWILIO_FROM_NUMBER", "").strip()),
+        "VOICE_WEBHOOK_URL": bool(os.getenv("VOICE_WEBHOOK_URL", "").strip()),
+    }
+    return {"present": present}
 
