@@ -5,6 +5,7 @@ from typing import Optional
 from dotenv import load_dotenv
 
 
+<<<<<<< Updated upstream
 # Load environment from backend/.env and backend/.env.local regardless of CWD
 _voiceagent_dir = os.path.dirname(__file__)
 _backend_dir = os.path.abspath(os.path.join(_voiceagent_dir, ".."))
@@ -16,6 +17,9 @@ if os.path.exists(_env_path):
     load_dotenv(_env_path, override=False)
 if os.path.exists(_env_local_path):
     load_dotenv(_env_local_path, override=False)
+=======
+load_dotenv()
+>>>>>>> Stashed changes
 
 
 @dataclass
