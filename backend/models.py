@@ -62,6 +62,7 @@ class ApartmentComplex(SQLModel, table=True):
     distance_to_burruss: Optional[float] = None  # miles
     bus_stop_nearby: Optional[bool] = None
     address: Optional[str] = None
+    image_url: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
@@ -88,6 +89,7 @@ class ApartmentComplexCreate(SQLModel):
     distance_to_burruss: Optional[float] = None
     bus_stop_nearby: Optional[bool] = None
     address: Optional[str] = None
+    image_url: Optional[str] = None
 
 class ApartmentComplexRead(ApartmentComplexCreate):
     id: UUID
