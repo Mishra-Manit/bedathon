@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import anthropic
@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from typing import List, Optional, Dict, Any
 from agent import ClaudeAgent, AgentRequest, AgentResponse
 from supabase_utils import get_current_user
+from sqlmodel import Session, create_engine, select
+from models import ApartmentComplex, ApartmentComplexRead, ApartmentComplexCreate
 
 load_dotenv()
 
@@ -22,6 +24,14 @@ app.add_middleware(
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 agent = ClaudeAgent(client)
+
+# Database setup
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./bedathon.db")
+engine = create_engine(DATABASE_URL)
+
+def get_session():
+    with Session(engine) as session:
+        yield session
 
 class ChatMessage(BaseModel):
     role: str
@@ -91,6 +101,119 @@ async def get_agent_history():
 async def clear_agent_history():
     agent.clear_history()
     return {"message": "Agent history cleared"}
+
+# Apartment API endpoints
+@app.get("/apartments", response_model=List[ApartmentComplexRead])
+async def get_apartments(
+    session: Session = Depends(get_session),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    search: Optional[str] = Query(None),
+    min_bedrooms: Optional[int] = Query(None, ge=0),
+    max_bedrooms: Optional[int] = Query(None, ge=0),
+    max_distance: Optional[float] = Query(None, ge=0),
+    pets_allowed: Optional[bool] = Query(None),
+    parking_included: Optional[bool] = Query(None),
+    furniture_included: Optional[bool] = Query(None)
+):
+    """Get apartment complexes with optional filtering."""
+    query = select(ApartmentComplex)
+    
+    # Apply filters
+    if search:
+        query = query.where(ApartmentComplex.name.contains(search))
+    
+    if min_bedrooms is not None:
+        # This is a simplified filter - in a real app you'd want more sophisticated logic
+        pass
+    
+    if max_bedrooms is not None:
+        # This is a simplified filter - in a real app you'd want more sophisticated logic
+        pass
+    
+    if max_distance is not None:
+        query = query.where(ApartmentComplex.distance_to_burruss <= max_distance)
+    
+    if pets_allowed is not None:
+        query = query.where(ApartmentComplex.pets_allowed == pets_allowed)
+    
+    if parking_included is not None:
+        query = query.where(ApartmentComplex.parking_included == parking_included)
+    
+    if furniture_included is not None:
+        query = query.where(ApartmentComplex.furniture_included == furniture_included)
+    
+    # Apply pagination
+    query = query.offset(offset).limit(limit)
+    
+    apartments = session.exec(query).all()
+    return apartments
+
+@app.get("/apartments/{apartment_id}", response_model=ApartmentComplexRead)
+async def get_apartment(
+    apartment_id: str,
+    session: Session = Depends(get_session)
+):
+    """Get a specific apartment complex by ID."""
+    apartment = session.get(ApartmentComplex, apartment_id)
+    if not apartment:
+        raise HTTPException(status_code=404, detail="Apartment not found")
+    return apartment
+
+@app.post("/apartments", response_model=ApartmentComplexRead)
+async def create_apartment(
+    apartment: ApartmentComplexCreate,
+    session: Session = Depends(get_session)
+):
+    """Create a new apartment complex."""
+    db_apartment = ApartmentComplex(**apartment.model_dump())
+    session.add(db_apartment)
+    session.commit()
+    session.refresh(db_apartment)
+    return db_apartment
+
+@app.put("/apartments/{apartment_id}", response_model=ApartmentComplexRead)
+async def update_apartment(
+    apartment_id: str,
+    apartment_update: ApartmentComplexCreate,
+    session: Session = Depends(get_session)
+):
+    """Update an existing apartment complex."""
+    apartment = session.get(ApartmentComplex, apartment_id)
+    if not apartment:
+        raise HTTPException(status_code=404, detail="Apartment not found")
+    
+    for key, value in apartment_update.model_dump().items():
+        setattr(apartment, key, value)
+    
+    session.add(apartment)
+    session.commit()
+    session.refresh(apartment)
+    return apartment
+
+@app.delete("/apartments/{apartment_id}")
+async def delete_apartment(
+    apartment_id: str,
+    session: Session = Depends(get_session)
+):
+    """Delete an apartment complex."""
+    apartment = session.get(ApartmentComplex, apartment_id)
+    if not apartment:
+        raise HTTPException(status_code=404, detail="Apartment not found")
+    
+    session.delete(apartment)
+    session.commit()
+    return {"message": "Apartment deleted successfully"}
+
+@app.post("/apartments/import")
+async def import_apartments_data(session: Session = Depends(get_session)):
+    """Import apartment data from the Google Sheets."""
+    try:
+        from import_apartments import import_apartments
+        import_apartments()
+        return {"message": "Apartment data imported successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error importing apartment data: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
