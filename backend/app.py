@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import anthropic
@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 from typing import List, Optional, Dict, Any
 from agent import ClaudeAgent, AgentRequest, AgentResponse
+from supabase_utils import get_current_user
 
 load_dotenv()
 
@@ -42,6 +43,18 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+@app.get("/auth/me")
+async def auth_me(user=Depends(get_current_user)):
+    # Return a subset of user info
+    return {
+        "id": getattr(user, "id", None),
+        "email": getattr(getattr(user, "email", None), "__str__", lambda: user.email)() if hasattr(user, "email") else None,
+        "app_metadata": getattr(user, "app_metadata", None),
+        "user_metadata": getattr(user, "user_metadata", None),
+        "aud": getattr(user, "aud", None),
+        "role": getattr(user, "role", None),
+    }
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_claude(request: ChatRequest):
