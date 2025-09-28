@@ -166,6 +166,7 @@ class ApartmentMatchResponse(BaseModel):
     match_percentage: float
     reasons: List[str]
     roommate_compatibility: float
+    apartment_features: Dict[str, Any]
 
 class DataSummaryResponse(BaseModel):
     apartments: Dict[str, Any]
@@ -365,6 +366,27 @@ async def find_apartment_matches(profile_id: str, limit: int = 5):
             "count": len(apartment_matches)
         }
         
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@matching_router.get("/best-apartment/{profile_id}", response_model=Dict[str, Any])
+async def get_best_apartment(profile_id: str):
+    """Return the single best apartment match for a given profile"""
+    try:
+        profile = matcher.get_profile_by_id(profile_id)
+        if not profile:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        matches = matcher.find_apartment_matches_for_profile(profile, limit=1)
+        if not matches:
+            return {"profile_id": profile_id, "best_match": None}
+
+        return {
+            "profile_id": profile_id,
+            "best_match": matches[0]
+        }
     except HTTPException:
         raise
     except Exception as e:
