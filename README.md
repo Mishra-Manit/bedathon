@@ -1,4 +1,4 @@
-# HokieNest 🏠
+# Bed-A-Thon 🏠
 
 **Roommates and Housing Matching for Virginia Tech**
 
