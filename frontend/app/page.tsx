@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { MessageCircle, Heart, X, MapPin, Star, Send, Moon, Sun, Loader2, Phone, CheckCircle, XCircle, AlertCircle, Home } from "lucide-react"
+import { Heart, X, MapPin, Star, Moon, Sun, Loader2, Phone, CheckCircle, XCircle, AlertCircle, Home, ExternalLink } from "lucide-react"
 import { useApartments } from "@/lib/useApartments"
 import { formatApartmentForDisplay } from "@/lib/apartmentService"
 
@@ -529,7 +529,6 @@ export default function HokieNest() {
   const [currentView, setCurrentView] = useState<"landing" | "onboarding" | "dashboard">("landing")
   const [user, setUser] = useState<User | null>(null)
   const [selectedProperty, setSelectedProperty] = useState<any>(null)
-  const [chatOpen, setChatOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const [authLoading, setAuthLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("roommates")
@@ -1384,40 +1383,6 @@ export default function HokieNest() {
               <Button variant="ghost" size="sm" onClick={toggleDarkMode} className="w-9 h-9 p-0">
                 {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-              <Sheet open={chatOpen} onOpenChange={setChatOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                    <MessageCircle className="h-4 w-4" />
-                    Messages
-                  </Button>
-                </SheetTrigger>
-                <SheetContent className="backdrop-blur-md bg-background/95">
-                  <SheetHeader>
-                    <SheetTitle className="text-xl font-bold">Messages</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-8 space-y-6">
-                    <div className="p-6 border border-border/50 rounded-lg card-hover">
-                      <div className="flex items-center gap-3 mb-3">
-                        <img src="/abstract-profile.png" alt="Sarah" className="w-10 h-10 rounded-full" />
-                        <span className="font-medium">Sarah Chen</span>
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        Hey! I saw we're a 92% match. Want to chat about housing options?
-                      </p>
-                    </div>
-                    <div className="flex gap-3">
-                      <Input
-                        placeholder="Type a message..."
-                        className="flex-1 h-12 border-border/50 bg-input/50 focus:bg-background transition-colors"
-                      />
-                      <Button size="sm" className="h-12 px-4">
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </SheetContent>
-              </Sheet>
               {user ? (
                 <Button
                   variant="ghost"
@@ -1556,9 +1521,12 @@ export default function HokieNest() {
                       </div>
 
                       <div className="flex gap-3">
-                        <Button className="flex-1 gap-2 h-11 font-medium">
-                          <MessageCircle className="h-4 w-4" />
-                          Message
+                        <Button
+                          className="flex-1 gap-2 h-11 font-medium"
+                          onClick={() => window.open('https://instagram.com', '_blank')}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Contact
                         </Button>
                         <Button variant="outline" className="gap-2 h-11 font-medium">
                           <Heart className="h-4 w-4" />
