@@ -2,6 +2,8 @@ import os
 from functools import lru_cache
 from types import SimpleNamespace
 from typing import Optional, List, Dict, Any
+import json
+import logging
 
 from dotenv import load_dotenv
 from fastapi import Header, HTTPException, status
@@ -72,9 +74,22 @@ def profiles_select_by_user_id(user_id: str, token: Optional[str] = None) -> Lis
         "Authorization": f"Bearer {token or cfg['api_key']}",
         "Accept": "application/json",
     }
-    resp = httpx.get(url, headers=headers, timeout=12)
-    resp.raise_for_status()
-    return resp.json() or []
+    try:
+        resp = httpx.get(url, headers=headers, timeout=12)
+        resp.raise_for_status()
+        return resp.json() or []
+    except httpx.HTTPStatusError as http_err:
+        body = http_err.response.text if http_err.response is not None else "<no body>"
+        logging.error(
+            "profiles_select_by_user_id failed: status=%s url=%s body=%s",
+            getattr(http_err.response, "status_code", "?"),
+            url,
+            body,
+        )
+        raise
+    except Exception as e:
+        logging.exception("profiles_select_by_user_id unexpected error: %s", str(e))
+        raise
 
 
 def profiles_insert(profile: Dict[str, Any], token: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -91,9 +106,25 @@ def profiles_insert(profile: Dict[str, Any], token: Optional[str] = None) -> Lis
         "Content-Type": "application/json",
         "Prefer": "return=representation",
     }
-    resp = httpx.post(url, headers=headers, json=profile, timeout=12)
-    resp.raise_for_status()
-    return resp.json() if resp.content else []
+    try:
+        resp = httpx.post(url, headers=headers, json=profile, timeout=12)
+        resp.raise_for_status()
+        return resp.json() if resp.content else []
+    except httpx.HTTPStatusError as http_err:
+        body = http_err.response.text if http_err.response is not None else "<no body>"
+        # Include outgoing payload for visibility, but truncate if huge
+        payload_preview = json.dumps(profile)[:1000]
+        logging.error(
+            "profiles_insert failed: status=%s url=%s body=%s payload=%s",
+            getattr(http_err.response, "status_code", "?"),
+            url,
+            body,
+            payload_preview,
+        )
+        raise
+    except Exception as e:
+        logging.exception("profiles_insert unexpected error: %s", str(e))
+        raise
 
 
 def profiles_update_by_user_id(user_id: str, updates: Dict[str, Any], token: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -110,7 +141,22 @@ def profiles_update_by_user_id(user_id: str, updates: Dict[str, Any], token: Opt
         "Content-Type": "application/json",
         "Prefer": "return=representation",
     }
-    resp = httpx.patch(url, headers=headers, json=updates, timeout=12)
-    resp.raise_for_status()
-    return resp.json() if resp.content else []
+    try:
+        resp = httpx.patch(url, headers=headers, json=updates, timeout=12)
+        resp.raise_for_status()
+        return resp.json() if resp.content else []
+    except httpx.HTTPStatusError as http_err:
+        body = http_err.response.text if http_err.response is not None else "<no body>"
+        payload_preview = json.dumps(updates)[:1000]
+        logging.error(
+            "profiles_update_by_user_id failed: status=%s url=%s body=%s payload=%s",
+            getattr(http_err.response, "status_code", "?"),
+            url,
+            body,
+            payload_preview,
+        )
+        raise
+    except Exception as e:
+        logging.exception("profiles_update_by_user_id unexpected error: %s", str(e))
+        raise
 
