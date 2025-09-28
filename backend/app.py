@@ -127,6 +127,10 @@ async def create_profile(profile_data: ProfileCreate, user=Depends(get_current_u
         if profile_dict.get("move_in") is not None:
             profile_dict["move_in"] = profile_dict["move_in"].isoformat()
         profile_dict["user_id"] = user.id
+        
+        # Remove fields that don't exist in Supabase schema
+        profile_dict.pop("max_distance_to_vt", None)
+        profile_dict.pop("preferred_amenities", None)
 
         created = profiles_insert(profile_dict, token=getattr(user, "token", None))
         if created:
