@@ -455,6 +455,53 @@ async def delete_profile(profile_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@matching_router.post("/apartment-matches-for-preferences", response_model=Dict[str, Any])
+async def find_apartment_matches_for_preferences(request: RoommatePreferencesRequest):
+    """Find apartment matches based on user preferences (without creating a profile)"""
+    try:
+        # Convert request to a temporary profile for matching
+        temp_profile = Profile(
+            id=None,  # Temporary
+            name=request.name,
+            year=request.year,
+            major=request.major,
+            budget=request.budget_min,
+            move_in=None,
+            tags=['pets'] if request.pet_friendly else [] + ['smoking'] if request.smoking else [],
+            cleanliness=convert_preference_string_to_int(request.cleanliness),
+            noise=convert_preference_string_to_int(request.noise_level),
+            study_time=convert_preference_string_to_int(request.study_time),
+            social=convert_preference_string_to_int(request.social_level),
+            sleep=convert_preference_string_to_int(request.sleep_schedule),
+            created_at=None,
+            updated_at=None
+        )
+        
+        # Find apartment matches using the existing algorithm
+        apartment_matches = matcher.find_apartment_matches_for_profile(temp_profile, limit=10)
+        
+        return {
+            "matches": apartment_matches,
+            "count": len(apartment_matches),
+            "user_preferences": {
+                "name": request.name,
+                "budget_range": f"${request.budget_min}-${request.budget_max}",
+                "preferred_bedrooms": request.preferred_bedrooms,
+                "cleanliness": request.cleanliness,
+                "noise_level": request.noise_level,
+                "study_time": request.study_time,
+                "social_level": request.social_level,
+                "sleep_schedule": request.sleep_schedule,
+                "pet_friendly": request.pet_friendly,
+                "smoking": request.smoking,
+                "year": request.year,
+                "major": request.major
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @matching_router.post("/profiles/clear-temp")
 async def clear_temp_profiles():
     """Clear temporary profiles after user session"""

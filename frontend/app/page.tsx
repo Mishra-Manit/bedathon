@@ -115,7 +115,7 @@ function RoommateMatchingInterface() {
       if (response.ok) {
         const result = await response.json()
         setCurrentProfileId(result.profile.id)
-        alert('Profile created successfully!')
+        alert('Profile created successfully! Finding your perfect matches...')
         setActiveTab('roommates')
         await fetchRoommateMatches(profile)
         await fetchApartmentMatches()
@@ -160,10 +160,15 @@ function RoommateMatchingInterface() {
   }
 
   const fetchApartmentMatches = async () => {
-    if (!currentProfileId) return
-
     try {
-      const response = await fetch(`${API_BASE_URL}/matching/apartment-matches/${currentProfileId}?limit=5`)
+      // Use the new apartment matching endpoint that works with user preferences
+      const response = await fetch(`${API_BASE_URL}/matching/apartment-matches-for-preferences`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(profile),
+      })
 
       if (response.ok) {
         const data = await response.json()
