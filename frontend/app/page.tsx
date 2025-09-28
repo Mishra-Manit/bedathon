@@ -619,7 +619,9 @@ export default function HokieNest() {
   const [selectedYear, setSelectedYear] = useState<string>("")
   const [maxDistanceToVt, setMaxDistanceToVt] = useState<number>(5.0)
   const [preferredAmenities, setPreferredAmenities] = useState<string[]>([])
+  const [preferredBedrooms, setPreferredBedrooms] = useState<number>(2)
   const [roommateMatches, setRoommateMatches] = useState<RoommateMatch[]>([])
+  const [apartmentMatches, setApartmentMatches] = useState<any[]>([])
 
   const checkUserProfile = async (sessionUser: User | null) => {
     if (!sessionUser) return null
@@ -742,7 +744,7 @@ export default function HokieNest() {
         email: data.session?.user?.email || '',
         budget_min: profile.budget,
         budget_max: profile.budget + 200,
-        preferred_bedrooms: 2,
+        preferred_bedrooms: profile.preferred_bedrooms || 2,
         cleanliness: intToPreference(profile.cleanliness),
         noise_level: intToPreference(profile.noise),
         study_time: intToPreference(profile.study_time),
@@ -845,7 +847,7 @@ export default function HokieNest() {
       const { data } = await supabase.auth.getSession()
       const token = data.session?.access_token
       if (!token) {
-        alert('You need to sign in first')
+        alert('You need to sign in first. Please use the "Sign in with Google" button to authenticate.')
         return
       }
 
@@ -902,6 +904,13 @@ export default function HokieNest() {
       if (!profilesResp.ok) {
         const text = await profilesResp.text()
         console.error('Failed to create profile in Supabase profiles table:', text)
+        
+        // Handle authentication errors specifically
+        if (profilesResp.status === 401) {
+          alert('Your session has expired. Please sign in again using the "Sign in with Google" button.')
+          return
+        }
+        
         alert(`Failed to create profile (profiles table): ${text}`)
         return
       }
@@ -915,7 +924,7 @@ export default function HokieNest() {
         email: data.session?.user?.email || '',
         budget_min: budget,
         budget_max: budget + 200,
-        preferred_bedrooms: 2,
+        preferred_bedrooms: preferredBedrooms,
         cleanliness: convertPreference(preferences.cleanliness[0]),
         noise_level: convertPreference(preferences.noiseLevel[0]),
         study_time: convertPreference(preferences.studyTime[0]),
@@ -1172,6 +1181,21 @@ export default function HokieNest() {
   }
 
   if (currentView === "onboarding") {
+    // Check if user is authenticated before showing onboarding
+    if (!user) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
+            <p className="text-muted-foreground mb-6">Please sign in to create your profile</p>
+            <Button onClick={() => setCurrentView("landing")}>
+              Go to Sign In
+            </Button>
+          </div>
+        </div>
+      )
+    }
+    
     return (
       <div className="min-h-screen bg-background">
         <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
@@ -1254,6 +1278,24 @@ export default function HokieNest() {
                       placeholder="$800"
                       className="h-12 border-border/50 bg-input/50 focus:bg-background transition-colors"
                     />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label htmlFor="bedrooms" className="text-sm font-medium text-foreground">
+                      Preferred Bedrooms
+                    </Label>
+                    <Select value={preferredBedrooms.toString()} onValueChange={(value) => setPreferredBedrooms(parseInt(value))}>
+                      <SelectTrigger className="h-12 border-border/50 bg-input/50 focus:bg-background transition-colors">
+                        <SelectValue placeholder="Select bedroom count" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 Bedroom</SelectItem>
+                        <SelectItem value="2">2 Bedrooms</SelectItem>
+                        <SelectItem value="3">3 Bedrooms</SelectItem>
+                        <SelectItem value="4">4 Bedrooms</SelectItem>
+                        <SelectItem value="5">5 Bedrooms</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-3">
@@ -1482,9 +1524,6 @@ export default function HokieNest() {
             <TabsTrigger value="housing" className="font-medium">
               Browse Housing
             </TabsTrigger>
-            <TabsTrigger value="matching" className="font-medium">
-              Smart Matching
-            </TabsTrigger>
             <TabsTrigger value="matches" className="font-medium">
               My Matches
             </TabsTrigger>
@@ -1507,7 +1546,7 @@ export default function HokieNest() {
                   size="sm"
                   onClick={() => {
                     setRoommateMatches([])
-                    setActiveTab("matching")
+                    setApartmentMatches([])
                   }}
                 >
                   Find New Matches
@@ -1526,10 +1565,10 @@ export default function HokieNest() {
                   <Button 
                     size="lg" 
                     className="gap-2"
-                    onClick={() => setActiveTab("matching")}
+                    onClick={() => setActiveTab("roommates")}
                   >
                     <Heart className="h-5 w-5" />
-                    Go to Smart Matching
+                    Find Roommates
                   </Button>
                 </div>
               </div>
@@ -1604,6 +1643,94 @@ export default function HokieNest() {
                     </div>
                   </Card>
                 ))}
+              </div>
+            )}
+
+            {/* Apartment Matches Section */}
+            {apartmentMatches.length > 0 && (
+              <div className="mt-16 pt-12 border-t border-border/50">
+                <div className="flex justify-between items-center mb-8">
+                  <div>
+                    <h3 className="text-2xl font-bold mb-2">Your Apartment Matches</h3>
+                    <p className="text-muted-foreground">
+                      Found {apartmentMatches.length} apartment{apartmentMatches.length === 1 ? '' : 's'} that match your preferences
+                    </p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setApartmentMatches([])}
+                  >
+                    Clear Results
+                  </Button>
+                </div>
+
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {apartmentMatches.map((match, index) => (
+                    <Card key={index} className="p-6 card-hover border-border/50">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-bold text-lg">{match.apartment_name}</h4>
+                            <p className="text-sm text-muted-foreground">{match.apartment_address}</p>
+                          </div>
+                          <Badge 
+                            variant={match.match_percentage >= 70 ? "default" : match.match_percentage >= 50 ? "secondary" : "destructive"}
+                            className="text-xs"
+                          >
+                            {match.match_percentage}% match
+                          </Badge>
+                        </div>
+
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Price:</span>
+                            <span className="font-medium">{match.price}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Bedrooms:</span>
+                            <span className="font-medium">{match.bedroom_count}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Distance to VT:</span>
+                            <span className="font-medium">{match.distance_to_vt} miles</span>
+                          </div>
+                          {match.amenities && match.amenities.length > 0 && (
+                            <div>
+                              <span className="text-muted-foreground">Amenities:</span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {match.amenities.slice(0, 3).map((amenity, i) => (
+                                  <Badge key={i} variant="outline" className="text-xs">
+                                    {amenity}
+                                  </Badge>
+                                ))}
+                                {match.amenities.length > 3 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{match.amenities.length - 3} more
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {match.reasons && match.reasons.length > 0 && (
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground font-medium">Why it matches:</p>
+                            {match.reasons.slice(0, 2).map((reason, i) => (
+                              <p key={i} className="text-xs text-muted-foreground">• {reason}</p>
+                            ))}
+                          </div>
+                        )}
+
+                        <Button className="w-full gap-2">
+                          <ExternalLink className="h-4 w-4" />
+                          View Details
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
               </div>
             )}
           </TabsContent>
@@ -1826,9 +1953,6 @@ export default function HokieNest() {
             </div>
           </TabsContent>
 
-          <TabsContent value="matching" className="mt-12">
-            <RoommateMatchingInterface />
-          </TabsContent>
 
           <TabsContent value="matches" className="mt-12">
             <div className="space-y-12">
