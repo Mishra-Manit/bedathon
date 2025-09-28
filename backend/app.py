@@ -14,6 +14,7 @@ from supabase_utils import (
     profiles_insert,
     profiles_update_by_user_id,
 )
+from supabase_matching_fastapi import matching_router
 
 load_dotenv()
 
@@ -26,6 +27,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include matching router
+app.include_router(matching_router)
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 agent = ClaudeAgent(client)

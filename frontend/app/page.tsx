@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import type { User } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
@@ -12,10 +12,491 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { MessageCircle, Heart, X, MapPin, Star, Send, Moon, Sun, Loader2, Phone, CheckCircle, XCircle, AlertCircle, Home } from "lucide-react"
 import { useApartments } from "@/lib/useApartments"
 import { formatApartmentForDisplay } from "@/lib/apartmentService"
+
+interface RoommateProfile {
+  id: string
+  name: string
+  year: string
+  major: string
+  budget: number
+  cleanliness: number
+  noise_level: number
+  study_time: number
+  social_level: number
+  sleep_schedule: number
+  tags: string[]
+}
+
+interface RoommateMatch {
+  id: string
+  name: string
+  year: string
+  major: string
+  budget: number
+  compatibility_percentage: number
+  preferences: {
+    cleanliness: number
+    noise_level: number
+    study_time: number
+    social_level: number
+    sleep_schedule: number
+  }
+}
+
+interface ApartmentMatch {
+  apartment_name: string
+  apartment_address: string
+  bedroom_count: number
+  price: string
+  distance_to_vt: number
+  amenities: string[]
+  match_score: number
+  match_percentage: number
+  reasons: string[]
+  roommate_compatibility: number
+  apartment_features: any
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+
+const preferenceOptions = [
+  { value: 'VERY_LOW', label: 'Very Low' },
+  { value: 'LOW', label: 'Low' },
+  { value: 'MEDIUM', label: 'Medium' },
+  { value: 'HIGH', label: 'High' },
+  { value: 'VERY_HIGH', label: 'Very High' }
+]
+
+function RoommateMatchingInterface() {
+  const [profile, setProfile] = useState({
+    name: '',
+    email: '',
+    budget_min: 800,
+    budget_max: 1200,
+    preferred_bedrooms: 2,
+    cleanliness: 'MEDIUM',
+    noise_level: 'MEDIUM',
+    study_time: 'MEDIUM',
+    social_level: 'MEDIUM',
+    sleep_schedule: 'MEDIUM',
+    pet_friendly: false,
+    smoking: false,
+    year: 'Junior',
+    major: 'Computer Science'
+  })
+
+  const [roommateMatches, setRoommateMatches] = useState<RoommateMatch[]>([])
+  const [apartmentMatches, setApartmentMatches] = useState<ApartmentMatch[]>([])
+  const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState('profile')
+  const [currentProfileId, setCurrentProfileId] = useState<string>('')
+
+  const handleCreateProfile = async () => {
+    // Clear previous matches when creating a new profile
+    setRoommateMatches([])
+    setApartmentMatches([])
+    setCurrentProfileId('')
+    
+    setLoading(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/matching/roommate-preferences`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(profile),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setCurrentProfileId(result.profile.id)
+        alert('Profile created successfully!')
+        setActiveTab('roommates')
+        await fetchRoommateMatches(profile)
+        await fetchApartmentMatches()
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.detail || 'Failed to create profile'}`)
+      }
+    } catch (error) {
+      alert(`Error: ${error}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchRoommateMatches = async (profileData?: any) => {
+    try {
+      // Clear previous matches first
+      setRoommateMatches([])
+      
+      const dataToSend = profileData || profile
+      
+      console.log('🔍 Sending profile data:', dataToSend)
+      
+      const response = await fetch(`${API_BASE_URL}/matching/roommate-matches`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...dataToSend,
+          min_compatibility: 0.5
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setRoommateMatches(data.matches)
+      }
+    } catch (error) {
+      console.error('Error fetching roommate matches:', error)
+    }
+  }
+
+  const fetchApartmentMatches = async () => {
+    if (!currentProfileId) return
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/matching/apartment-matches/${currentProfileId}?limit=5`)
+
+      if (response.ok) {
+        const data = await response.json()
+        setApartmentMatches(data.matches)
+      }
+    } catch (error) {
+      console.error('Error fetching apartment matches:', error)
+    }
+  }
+
+  const getCompatibilityColor = (percentage: number) => {
+    if (percentage >= 80) return 'bg-green-500'
+    if (percentage >= 60) return 'bg-yellow-500'
+    return 'bg-red-500'
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="text-center mb-8">
+        <h2 className="text-3xl font-bold mb-4">Smart Roommate Matching</h2>
+        <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
+          Create your profile and let our AI find your perfect roommate matches based on lifestyle, preferences, and compatibility.
+        </p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3 h-12 p-1 bg-muted/50">
+          <TabsTrigger value="profile" className="font-medium">Create Profile</TabsTrigger>
+          <TabsTrigger value="roommates" className="font-medium">Roommate Matches</TabsTrigger>
+          <TabsTrigger value="apartments" className="font-medium">Apartment Matches</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="profile" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Create Your Roommate Profile</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="Your full name"
+                    value={profile.name}
+                    onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your.email@vt.edu"
+                    value={profile.email}
+                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="budget_min">Minimum Budget ($/month)</Label>
+                  <Input
+                    id="budget_min"
+                    type="number"
+                    value={profile.budget_min}
+                    onChange={(e) => setProfile({ ...profile, budget_min: parseInt(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="budget_max">Maximum Budget ($/month)</Label>
+                  <Input
+                    id="budget_max"
+                    type="number"
+                    value={profile.budget_max}
+                    onChange={(e) => setProfile({ ...profile, budget_max: parseInt(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bedrooms">Preferred Bedrooms</Label>
+                  <Select
+                    value={profile.preferred_bedrooms?.toString()}
+                    onValueChange={(value) => setProfile({ ...profile, preferred_bedrooms: parseInt(value) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select bedroom count" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 Bedroom</SelectItem>
+                      <SelectItem value="2">2 Bedrooms</SelectItem>
+                      <SelectItem value="3">3 Bedrooms</SelectItem>
+                      <SelectItem value="4">4 Bedrooms</SelectItem>
+                      <SelectItem value="5">5 Bedrooms</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="year">Academic Year</Label>
+                  <Select
+                    value={profile.year}
+                    onValueChange={(value) => setProfile({ ...profile, year: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select academic year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Freshman">Freshman</SelectItem>
+                      <SelectItem value="Sophomore">Sophomore</SelectItem>
+                      <SelectItem value="Junior">Junior</SelectItem>
+                      <SelectItem value="Senior">Senior</SelectItem>
+                      <SelectItem value="Graduate">Graduate</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="major">Major</Label>
+                  <Input
+                    id="major"
+                    placeholder="Your major"
+                    value={profile.major}
+                    onChange={(e) => setProfile({ ...profile, major: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cleanliness Level</Label>
+                  <Select
+                    value={profile.cleanliness}
+                    onValueChange={(value) => setProfile({ ...profile, cleanliness: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select cleanliness level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {preferenceOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Noise Tolerance</Label>
+                  <Select
+                    value={profile.noise_level}
+                    onValueChange={(value) => setProfile({ ...profile, noise_level: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select noise tolerance" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {preferenceOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Study Time</Label>
+                  <Select
+                    value={profile.study_time}
+                    onValueChange={(value) => setProfile({ ...profile, study_time: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select study time preference" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {preferenceOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Social Level</Label>
+                  <Select
+                    value={profile.social_level}
+                    onValueChange={(value) => setProfile({ ...profile, social_level: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select social level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {preferenceOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Sleep Schedule</Label>
+                  <Select
+                    value={profile.sleep_schedule}
+                    onValueChange={(value) => setProfile({ ...profile, sleep_schedule: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select sleep schedule" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {preferenceOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex items-center space-x-6">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="pet_friendly"
+                    checked={profile.pet_friendly}
+                    onCheckedChange={(checked) => setProfile({ ...profile, pet_friendly: checked as boolean })}
+                  />
+                  <Label htmlFor="pet_friendly">Pet Friendly</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="smoking"
+                    checked={profile.smoking}
+                    onCheckedChange={(checked) => setProfile({ ...profile, smoking: checked as boolean })}
+                  />
+                  <Label htmlFor="smoking">Smoking</Label>
+                </div>
+              </div>
+              <Button onClick={handleCreateProfile} className="w-full" disabled={loading}>
+                {loading ? 'Creating Profile...' : 'Create Profile & Find Matches'}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="roommates" className="mt-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Roommate Matches</h2>
+            {roommateMatches.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setRoommateMatches([])
+                  setApartmentMatches([])
+                  setCurrentProfileId('')
+                }}
+              >
+                Clear Results
+              </Button>
+            )}
+          </div>
+          {roommateMatches.length === 0 ? (
+            <p className="text-gray-500">No roommate matches found yet. Create your profile to see matches!</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {roommateMatches.map((match) => (
+                <Card key={match.id}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>{match.name}</span>
+                      <Badge className={getCompatibilityColor(match.compatibility_percentage)}>
+                        {match.compatibility_percentage}% Compatible
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="space-y-1 text-sm">
+                        <p><strong>Year:</strong> {match.year}</p>
+                        <p><strong>Major:</strong> {match.major}</p>
+                        <p><strong>Budget:</strong> ${match.budget}/month</p>
+                        <p><strong>Cleanliness:</strong> {match.preferences.cleanliness}/5</p>
+                        <p><strong>Noise Level:</strong> {match.preferences.noise_level}/5</p>
+                        <p><strong>Study Time:</strong> {match.preferences.study_time}/5</p>
+                        <p><strong>Social Level:</strong> {match.preferences.social_level}/5</p>
+                        <p><strong>Sleep Schedule:</strong> {match.preferences.sleep_schedule}/5</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="apartments" className="mt-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Apartment Matches</h2>
+            {apartmentMatches.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setApartmentMatches([])
+                  setRoommateMatches([])
+                  setCurrentProfileId('')
+                }}
+              >
+                Clear Results
+              </Button>
+            )}
+          </div>
+          {apartmentMatches.length === 0 ? (
+            <p className="text-gray-500">No apartment matches found yet. Create your profile to see recommendations!</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {apartmentMatches.map((apartment) => (
+                <Card key={apartment.apartment_name}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>{apartment.apartment_name}</span>
+                      <Badge className={getCompatibilityColor(apartment.match_percentage)}>
+                        {apartment.match_percentage}% Match
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <p><strong>Address:</strong> {apartment.apartment_address}</p>
+                    <p><strong>Price:</strong> {apartment.price}</p>
+                    <p><strong>Bedrooms:</strong> {apartment.bedroom_count}</p>
+                    <p><strong>Distance to VT:</strong> {apartment.distance_to_vt} miles</p>
+                    <p><strong>Amenities:</strong> {apartment.amenities.join(', ') || 'None'}</p>
+                    <div className="mt-4">
+                      <h5 className="font-medium mb-1">Reasons for Match:</h5>
+                      <ul className="list-disc list-inside text-xs text-gray-600">
+                        {apartment.reasons.map((reason, index) => (
+                          <li key={index}>{reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}
 
 export default function HokieNest() {
   const [currentView, setCurrentView] = useState<"landing" | "onboarding" | "dashboard">("landing")
@@ -23,6 +504,7 @@ export default function HokieNest() {
   const [selectedProperty, setSelectedProperty] = useState<any>(null)
   const [chatOpen, setChatOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
+  const [activeTab, setActiveTab] = useState("roommates")
   
   // Fetch apartment data
   const { apartments, loading: apartmentsLoading, error: apartmentsError } = useApartments()
@@ -523,13 +1005,16 @@ export default function HokieNest() {
       </nav>
 
       <main className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
-        <Tabs defaultValue="roommates" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-12 p-1 bg-muted/50">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 h-12 p-1 bg-muted/50">
             <TabsTrigger value="roommates" className="font-medium">
               Find Roommates
             </TabsTrigger>
             <TabsTrigger value="housing" className="font-medium">
               Browse Housing
+            </TabsTrigger>
+            <TabsTrigger value="matching" className="font-medium">
+              Smart Matching
             </TabsTrigger>
             <TabsTrigger value="matches" className="font-medium">
               My Matches
@@ -537,6 +1022,21 @@ export default function HokieNest() {
           </TabsList>
 
           <TabsContent value="roommates" className="mt-12">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-4">Find Your Perfect Roommate</h2>
+              <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
+                Our smart matching system analyzes your lifestyle preferences, budget, and living habits to connect you with compatible roommates.
+              </p>
+              <Button 
+                size="lg" 
+                className="gap-2"
+                onClick={() => window.open('/roommate-matching', '_blank')}
+              >
+                <Heart className="h-5 w-5" />
+                Start Matching Now
+              </Button>
+            </div>
+
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {roommates.map((roommate) => (
                 <Card key={roommate.id} className="p-8 card-hover border-border/50">
@@ -603,7 +1103,7 @@ export default function HokieNest() {
                 <Card key={property.id} className="p-8 card-hover border-border/50">
                   <div className="flex gap-8">
                     <img
-                      src={property.imageUrl || "/college-apartment-exterior.jpg"}
+                      src={property.imageUrl || `https://picsum.photos/800/600?random=${Math.abs(property.name.split('').reduce((a,b) => a + b.charCodeAt(0), 0)) % 1000}`}
                       alt={property.name}
                       className="w-56 h-40 rounded-lg object-cover border border-border/20"
                     />
@@ -647,7 +1147,7 @@ export default function HokieNest() {
                           </DialogHeader>
                           <div className="space-y-8">
                             <img
-                              src={property.imageUrl || "/college-apartment-exterior.jpg"}
+                              src={property.imageUrl || `https://picsum.photos/800/600?random=${Math.abs(property.name.split('').reduce((a,b) => a + b.charCodeAt(0), 0)) % 1000}`}
                               alt={property.name}
                               className="w-full h-80 rounded-lg object-cover border border-border/20"
                             />
@@ -749,6 +1249,10 @@ export default function HokieNest() {
                 ))
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="matching" className="mt-12">
+            <RoommateMatchingInterface />
           </TabsContent>
 
           <TabsContent value="matches" className="mt-12">

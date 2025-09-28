@@ -1,0 +1,479 @@
+{
+  "roommate_matches": [
+    {
+      "roommate1": {
+        "name": "Alice Johnson",
+        "email": "alice@vt.edu",
+        "budget_min": 800,
+        "budget_max": 1200,
+        "preferred_bedrooms": 2,
+        "cleanliness": "HIGH",
+        "noise_level": "LOW",
+        "study_time": "VERY_HIGH",
+        "social_level": "MEDIUM",
+        "sleep_schedule": "HIGH",
+        "pet_friendly": true,
+        "smoking": false,
+        "gender_preference": null,
+        "age_range": null,
+        "move_in_date": null,
+        "lease_length": null
+      },
+      "roommate2": {
+        "name": "Carol Davis",
+        "email": "carol@vt.edu",
+        "budget_min": 700,
+        "budget_max": 1100,
+        "preferred_bedrooms": 3,
+        "cleanliness": "VERY_HIGH",
+        "noise_level": "VERY_LOW",
+        "study_time": "HIGH",
+        "social_level": "LOW",
+        "sleep_schedule": "HIGH",
+        "pet_friendly": true,
+        "smoking": false,
+        "gender_preference": null,
+        "age_range": null,
+        "move_in_date": null,
+        "lease_length": null
+      },
+      "compatibility_score": 0.8257575757575757,
+      "compatibility_percentage": 82.6
+    },
+    {
+      "roommate1": {
+        "name": "Alice Johnson",
+        "email": "alice@vt.edu",
+        "budget_min": 800,
+        "budget_max": 1200,
+        "preferred_bedrooms": 2,
+        "cleanliness": "HIGH",
+        "noise_level": "LOW",
+        "study_time": "VERY_HIGH",
+        "social_level": "MEDIUM",
+        "sleep_schedule": "HIGH",
+        "pet_friendly": true,
+        "smoking": false,
+        "gender_preference": null,
+        "age_range": null,
+        "move_in_date": null,
+        "lease_length": null
+      },
+      "roommate2": {
+        "name": "Bob Smith",
+        "email": "bob@vt.edu",
+        "budget_min": 900,
+        "budget_max": 1300,
+        "preferred_bedrooms": 2,
+        "cleanliness": "MEDIUM",
+        "noise_level": "MEDIUM",
+        "study_time": "MEDIUM",
+        "social_level": "HIGH",
+        "sleep_schedule": "LOW",
+        "pet_friendly": false,
+        "smoking": false,
+        "gender_preference": null,
+        "age_range": null,
+        "move_in_date": null,
+        "lease_length": null
+      },
+      "compatibility_score": 0.6564685314685315,
+      "compatibility_percentage": 65.6
+    }
+  ],
+  "apartment_matches": {
+    "alice@vt.edu": [
+      {
+        "apartment_name": "Apartment Heights",
+        "apartment_address": "309 Apartment Heights Dr, Blacksburg, VA",
+        "bedroom_count": 3,
+        "price": "$1350",
+        "distance_to_vt": 2.4,
+        "amenities": [
+          "Pool",
+          "Fitness Center",
+          "Pet Friendly",
+          "Covered Parking",
+          "Laundry"
+        ],
+        "match_score": 0.707,
+        "match_percentage": 70.7,
+        "reasons": [
+          "Price $1350 is above your budget",
+          "Bedroom count: 3 (preferred: 2)",
+          "Moderate distance to VT: 2.4 miles",
+          "Has laundry facilities (good for cleanliness)",
+          "Has fitness center (quiet activity)",
+          "Pet-friendly apartment",
+          "Includes WiFi (good for studying)",
+          "Parking available: Covered"
+        ],
+        "roommate_compatibility": 0.5
+      },
+      {
+        "apartment_name": "The Orchards",
+        "apartment_address": "789 Orchard Lane, Blacksburg, VA",
+        "bedroom_count": 3,
+        "price": "$1250",
+        "distance_to_vt": 4.0,
+        "amenities": [
+          "Pool",
+          "Fitness Center",
+          "Pet Friendly",
+          "Parking",
+          "Laundry",
+          "Business Center"
+        ],
+        "match_score": 0.698,
+        "match_percentage": 69.8,
+        "reasons": [
+          "Price $1250 is above your budget",
+          "Bedroom count: 3 (preferred: 2)",
+          "Far from VT: 4.0 miles",
+          "Has laundry facilities (good for cleanliness)",
+          "Has fitness center (quiet activity)",
+          "Pet-friendly apartment",
+          "Includes WiFi (good for studying)",
+          "Parking available: Free"
+        ],
+        "roommate_compatibility": 0.5
+      },
+      {
+        "apartment_name": "Maple Ridge Townhomes",
+        "apartment_address": "344 Red Maple Drive, Blacksburg, VA",
+        "bedroom_count": 4,
+        "price": "$1200",
+        "distance_to_vt": 4.3,
+        "amenities": [
+          "Pet Friendly",
+          "Parking",
+          "Laundry",
+          "Patio/Balcony"
+        ],
+        "match_score": 0.68,
+        "match_percentage": 68.0,
+        "reasons": [
+          "Price $1200 fits your budget ($800-$1200)",
+          "Bedroom count: 4 (preferred: 2)",
+          "Far from VT: 4.3 miles",
+          "Has laundry facilities (good for cleanliness)",
+          "Pet-friendly apartment",
+          "Quiet environment for studying",
+          "Parking available: Free"
+        ],
+        "roommate_compatibility": 0.5
+      },
+      {
+        "apartment_name": "The Village at Blacksburg",
+        "apartment_address": "1600 Patrick Henry Drive, Blacksburg, VA",
+        "bedroom_count": 3,
+        "price": "$1200",
+        "distance_to_vt": 3.7,
+        "amenities": [
+          "Pool",
+          "Fitness Center",
+          "Pet Friendly",
+          "Parking",
+          "Laundry"
+        ],
+        "match_score": 0.66,
+        "match_percentage": 66.0,
+        "reasons": [
+          "Price $1200 fits your budget ($800-$1200)",
+          "Bedroom count: 3 (preferred: 2)",
+          "Far from VT: 3.7 miles",
+          "Has laundry facilities (good for cleanliness)",
+          "Has fitness center (quiet activity)",
+          "Pet-friendly apartment",
+          "Parking available: Free"
+        ],
+        "roommate_compatibility": 0.5
+      },
+      {
+        "apartment_name": "Oak Manor",
+        "apartment_address": "456 Oak Street, Blacksburg, VA",
+        "bedroom_count": 3,
+        "price": "$1300",
+        "distance_to_vt": 4.7,
+        "amenities": [
+          "Pool",
+          "Fitness Center",
+          "Parking",
+          "Laundry",
+          "Clubhouse"
+        ],
+        "match_score": 0.592,
+        "match_percentage": 59.2,
+        "reasons": [
+          "Price $1300 is above your budget",
+          "Bedroom count: 3 (preferred: 2)",
+          "Far from VT: 4.7 miles",
+          "Has laundry facilities (good for cleanliness)",
+          "Has fitness center (quiet activity)",
+          "Parking available: Free"
+        ],
+        "roommate_compatibility": 0.5
+      }
+    ],
+    "bob@vt.edu": [
+      {
+        "apartment_name": "Apartment Heights",
+        "apartment_address": "309 Apartment Heights Dr, Blacksburg, VA",
+        "bedroom_count": 3,
+        "price": "$1350",
+        "distance_to_vt": 2.4,
+        "amenities": [
+          "Pool",
+          "Fitness Center",
+          "Pet Friendly",
+          "Covered Parking",
+          "Laundry"
+        ],
+        "match_score": 0.589,
+        "match_percentage": 58.9,
+        "reasons": [
+          "Price $1350 is above your budget",
+          "Bedroom count: 3 (preferred: 2)",
+          "Moderate distance to VT: 2.4 miles",
+          "Has pool (good for socializing)",
+          "Parking available: Covered"
+        ],
+        "roommate_compatibility": 0.5
+      },
+      {
+        "apartment_name": "The Village at Blacksburg",
+        "apartment_address": "1600 Patrick Henry Drive, Blacksburg, VA",
+        "bedroom_count": 3,
+        "price": "$1200",
+        "distance_to_vt": 3.7,
+        "amenities": [
+          "Pool",
+          "Fitness Center",
+          "Pet Friendly",
+          "Parking",
+          "Laundry"
+        ],
+        "match_score": 0.57,
+        "match_percentage": 57.0,
+        "reasons": [
+          "Price $1200 fits your budget ($900-$1300)",
+          "Bedroom count: 3 (preferred: 2)",
+          "Far from VT: 3.7 miles",
+          "Has pool (good for socializing)",
+          "Parking available: Free"
+        ],
+        "roommate_compatibility": 0.5
+      },
+      {
+        "apartment_name": "Oak Manor",
+        "apartment_address": "456 Oak Street, Blacksburg, VA",
+        "bedroom_count": 3,
+        "price": "$1300",
+        "distance_to_vt": 4.7,
+        "amenities": [
+          "Pool",
+          "Fitness Center",
+          "Parking",
+          "Laundry",
+          "Clubhouse"
+        ],
+        "match_score": 0.57,
+        "match_percentage": 57.0,
+        "reasons": [
+          "Price $1300 fits your budget ($900-$1300)",
+          "Bedroom count: 3 (preferred: 2)",
+          "Far from VT: 4.7 miles",
+          "Has pool (good for socializing)",
+          "Parking available: Free"
+        ],
+        "roommate_compatibility": 0.5
+      },
+      {
+        "apartment_name": "The Orchards",
+        "apartment_address": "789 Orchard Lane, Blacksburg, VA",
+        "bedroom_count": 3,
+        "price": "$1250",
+        "distance_to_vt": 4.0,
+        "amenities": [
+          "Pool",
+          "Fitness Center",
+          "Pet Friendly",
+          "Parking",
+          "Laundry",
+          "Business Center"
+        ],
+        "match_score": 0.57,
+        "match_percentage": 57.0,
+        "reasons": [
+          "Price $1250 fits your budget ($900-$1300)",
+          "Bedroom count: 3 (preferred: 2)",
+          "Far from VT: 4.0 miles",
+          "Has pool (good for socializing)",
+          "Parking available: Free"
+        ],
+        "roommate_compatibility": 0.5
+      },
+      {
+        "apartment_name": "Maple Ridge Townhomes",
+        "apartment_address": "344 Red Maple Drive, Blacksburg, VA",
+        "bedroom_count": 4,
+        "price": "$1200",
+        "distance_to_vt": 4.3,
+        "amenities": [
+          "Pet Friendly",
+          "Parking",
+          "Laundry",
+          "Patio/Balcony"
+        ],
+        "match_score": 0.54,
+        "match_percentage": 54.0,
+        "reasons": [
+          "Price $1200 fits your budget ($900-$1300)",
+          "Bedroom count: 4 (preferred: 2)",
+          "Far from VT: 4.3 miles",
+          "Parking available: Free"
+        ],
+        "roommate_compatibility": 0.5
+      }
+    ],
+    "carol@vt.edu": [
+      {
+        "apartment_name": "Apartment Heights",
+        "apartment_address": "309 Apartment Heights Dr, Blacksburg, VA",
+        "bedroom_count": 3,
+        "price": "$1650",
+        "distance_to_vt": 2.4,
+        "amenities": [
+          "Pool",
+          "Fitness Center",
+          "Pet Friendly",
+          "Covered Parking",
+          "Laundry"
+        ],
+        "match_score": 0.74,
+        "match_percentage": 74.0,
+        "reasons": [
+          "Price $1650 is above your budget",
+          "Perfect bedroom count: 3",
+          "Moderate distance to VT: 2.4 miles",
+          "Has laundry facilities (good for cleanliness)",
+          "Has fitness center (quiet activity)",
+          "Pet-friendly apartment",
+          "Includes WiFi (good for studying)",
+          "Parking available: Covered"
+        ],
+        "roommate_compatibility": 0.5
+      },
+      {
+        "apartment_name": "The Orchards",
+        "apartment_address": "789 Orchard Lane, Blacksburg, VA",
+        "bedroom_count": 3,
+        "price": "$1550",
+        "distance_to_vt": 4.0,
+        "amenities": [
+          "Pool",
+          "Fitness Center",
+          "Pet Friendly",
+          "Parking",
+          "Laundry",
+          "Business Center"
+        ],
+        "match_score": 0.723,
+        "match_percentage": 72.3,
+        "reasons": [
+          "Price $1550 is above your budget",
+          "Perfect bedroom count: 3",
+          "Far from VT: 4.0 miles",
+          "Has laundry facilities (good for cleanliness)",
+          "Has fitness center (quiet activity)",
+          "Pet-friendly apartment",
+          "Includes WiFi (good for studying)",
+          "Parking available: Free"
+        ],
+        "roommate_compatibility": 0.5
+      },
+      {
+        "apartment_name": "The Village at Blacksburg",
+        "apartment_address": "1600 Patrick Henry Drive, Blacksburg, VA",
+        "bedroom_count": 3,
+        "price": "$1500",
+        "distance_to_vt": 3.7,
+        "amenities": [
+          "Pool",
+          "Fitness Center",
+          "Pet Friendly",
+          "Parking",
+          "Laundry"
+        ],
+        "match_score": 0.68,
+        "match_percentage": 68.0,
+        "reasons": [
+          "Price $1500 is above your budget",
+          "Perfect bedroom count: 3",
+          "Far from VT: 3.7 miles",
+          "Has laundry facilities (good for cleanliness)",
+          "Has fitness center (quiet activity)",
+          "Pet-friendly apartment",
+          "Parking available: Free"
+        ],
+        "roommate_compatibility": 0.5
+      },
+      {
+        "apartment_name": "Oak Manor",
+        "apartment_address": "456 Oak Street, Blacksburg, VA",
+        "bedroom_count": 3,
+        "price": "$1600",
+        "distance_to_vt": 4.7,
+        "amenities": [
+          "Pool",
+          "Fitness Center",
+          "Parking",
+          "Laundry",
+          "Clubhouse"
+        ],
+        "match_score": 0.621,
+        "match_percentage": 62.1,
+        "reasons": [
+          "Price $1600 is above your budget",
+          "Perfect bedroom count: 3",
+          "Far from VT: 4.7 miles",
+          "Has laundry facilities (good for cleanliness)",
+          "Has fitness center (quiet activity)",
+          "Parking available: Free"
+        ],
+        "roommate_compatibility": 0.5
+      },
+      {
+        "apartment_name": "Maple Ridge Townhomes",
+        "apartment_address": "344 Red Maple Drive, Blacksburg, VA",
+        "bedroom_count": 4,
+        "price": "$1450",
+        "distance_to_vt": 4.3,
+        "amenities": [
+          "Pet Friendly",
+          "Parking",
+          "Laundry",
+          "Patio/Balcony"
+        ],
+        "match_score": 0.608,
+        "match_percentage": 60.8,
+        "reasons": [
+          "Price $1450 is above your budget",
+          "Bedroom count: 4 (preferred: 3)",
+          "Far from VT: 4.3 miles",
+          "Has laundry facilities (good for cleanliness)",
+          "Pet-friendly apartment",
+          "Quiet environment for studying",
+          "Parking available: Free"
+        ],
+        "roommate_compatibility": 0.5
+      }
+    ]
+  },
+  "summary": {
+    "total_roommates": 3,
+    "total_apartments": 5,
+    "total_restaurants": 8,
+    "total_amenities": 8
+  }
+}
