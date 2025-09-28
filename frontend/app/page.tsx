@@ -557,6 +557,42 @@ export default function HokieNest() {
 
   useEffect(() => {
     let isMounted = true
+    
+    // Handle OAuth callback parameters
+    const urlParams = new URLSearchParams(window.location.search)
+    const code = urlParams.get('code')
+    const error = urlParams.get('error')
+    const authError = urlParams.get('auth_error')
+    
+    if (authError) {
+      alert(`Authentication failed: ${decodeURIComponent(authError)}`)
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+    
+    if (error) {
+      alert(`OAuth error: ${error}`)
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+    
+    // If we have a code, exchange it for a session
+    if (code) {
+      console.log('Processing OAuth code...')
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error: exchangeError }) => {
+        if (exchangeError) {
+          console.error('Session exchange error:', exchangeError)
+          alert(`Authentication failed: ${exchangeError.message}`)
+        } else if (data.session) {
+          console.log('Session created successfully!')
+        }
+        // Clean up the URL
+        window.history.replaceState({}, document.title, window.location.pathname)
+      }).catch((e) => {
+        console.error('Exchange error:', e)
+        alert(`Authentication failed: ${e.message}`)
+        window.history.replaceState({}, document.title, window.location.pathname)
+      })
+    }
+    
     ;(async () => {
       const { data } = await supabase.auth.getSession()
       if (isMounted) {
@@ -565,21 +601,25 @@ export default function HokieNest() {
         if (sessionUser) {
           const profile = await checkUserProfile(sessionUser)
           setCurrentView(profile ? "dashboard" : "onboarding")
-          } else {
+        } else {
           setCurrentView("landing")
         }
       }
     })()
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email)
       const sessionUser = session?.user ?? null
       setUser(sessionUser)
       if (sessionUser) {
         const profile = await checkUserProfile(sessionUser)
         setCurrentView(profile ? "dashboard" : "onboarding")
-        } else {
+      } else {
         setCurrentView("landing")
       }
+      setAuthLoading(false)
     })
+    
     return () => {
       authListener.subscription.unsubscribe()
       isMounted = false
@@ -589,21 +629,33 @@ export default function HokieNest() {
   const signInWithGoogle = async () => {
     try {
       setAuthLoading(true)
-      const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined
+      
+      console.log('Starting Google OAuth...')
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo, queryParams: { prompt: 'select_account' } },
+        options: { 
+          redirectTo: `${window.location.origin}/`,
+          queryParams: { 
+            prompt: 'select_account',
+            access_type: 'offline'
+          }
+        },
       })
+      
+      console.log('OAuth response:', { data, error })
+      
       if (error) throw error
-      if (!data?.url && !redirectTo) {
-        alert('Sign-in started. If no popup opened, allow popups and try again.')
-      }
+      
+      // The user will be redirected to Google, then back to home
+      console.log('Redirecting to Google OAuth...')
+      
     } catch (e: any) {
       console.error('Google sign-in failed', e)
       alert(`Sign-in failed: ${e?.message || e}`)
-    } finally {
       setAuthLoading(false)
     }
+    // Don't set loading to false here since we're redirecting
   }
 
   const signOut = async () => {
