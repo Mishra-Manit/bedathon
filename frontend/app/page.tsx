@@ -516,6 +516,8 @@ export default function HokieNest() {
     socialLevel: [3],
     sleepSchedule: [3],
   })
+  const [selectedYear, setSelectedYear] = useState<string>("")
+  const [roommateMatches, setRoommateMatches] = useState<RoommateMatch[]>([])
 
   const checkUserProfile = async (sessionUser: User | null) => {
     try {
@@ -614,7 +616,7 @@ export default function HokieNest() {
     document.documentElement.classList.toggle("dark")
   }
 
-  // Submit onboarding → create profile in backend
+  // Submit onboarding → create profile in backend and find roommate matches
   const createProfile = async () => {
     try {
       const { data } = await supabase.auth.getSession()
@@ -625,20 +627,26 @@ export default function HokieNest() {
       }
 
       const name = (document.getElementById('name') as HTMLInputElement | null)?.value?.trim() || ''
-      // Normalize year to enum expected by backend
-      let yearInput = (document.getElementById('year') as HTMLInputElement | null)?.value?.trim() || 'Other'
-      const allowedYears = ['Freshman','Sophomore','Junior','Senior','Graduate','Other']
-      const normalized = yearInput.charAt(0).toUpperCase() + yearInput.slice(1).toLowerCase()
-      const year = allowedYears.includes(normalized) ? normalized : 'Other'
+      const year = selectedYear || 'Junior'
+      const major = (document.getElementById('major') as HTMLInputElement | null)?.value?.trim() || 'Computer Science'
       const budgetStr = (document.getElementById('budget') as HTMLInputElement | null)?.value || '1000'
       const budget = Number(String(budgetStr).replace(/[^0-9]/g, '')) || 1000
       const moveInVal = (document.getElementById('moveIn') as HTMLInputElement | null)?.value || ''
       const move_in = moveInVal ? moveInVal : null
 
+      // Convert slider values to preference strings for roommate matching
+      const convertPreference = (value: number) => {
+        if (value <= 1) return 'VERY_LOW'
+        if (value <= 2) return 'LOW'
+        if (value <= 3) return 'MEDIUM'
+        if (value <= 4) return 'HIGH'
+        return 'VERY_HIGH'
+      }
+
       const body = {
         name,
         year,
-        major: null,
+        major,
         budget,
         move_in,
         tags: [],
@@ -679,7 +687,42 @@ export default function HokieNest() {
         return
       }
 
-      alert('Profile created successfully!')
+      // Now find roommate matches using the same data
+      const roommateMatchingData = {
+        name,
+        email: data.session?.user?.email || '',
+        budget_min: budget,
+        budget_max: budget + 200,
+        preferred_bedrooms: 2,
+        cleanliness: convertPreference(preferences.cleanliness[0]),
+        noise_level: convertPreference(preferences.noiseLevel[0]),
+        study_time: convertPreference(preferences.studyTime[0]),
+        social_level: convertPreference(preferences.socialLevel[0]),
+        sleep_schedule: convertPreference(preferences.sleepSchedule[0]),
+        pet_friendly: false,
+        smoking: false,
+        year,
+        major,
+        min_compatibility: 0.5
+      }
+
+      // Find roommate matches
+      const matchesResp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/matching/roommate-matches`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(roommateMatchingData),
+      })
+
+      if (matchesResp.ok) {
+        const matchesData = await matchesResp.json()
+        console.log('Found roommate matches:', matchesData)
+        setRoommateMatches(matchesData.matches || []) // Store the matches
+      }
+
+      alert('Profile created successfully! Finding your perfect roommate matches...')
+      setActiveTab('roommates') // Set to roommates tab
       setCurrentView('dashboard')
     } catch (e) {
       console.error('createProfile failed', e)
@@ -828,11 +871,19 @@ export default function HokieNest() {
                     <Label htmlFor="year" className="text-sm font-medium text-foreground">
                       Year
                     </Label>
-                    <Input
-                      id="year"
-                      placeholder="Freshman, Sophomore, etc."
-                      className="h-12 border-border/50 bg-input/50 focus:bg-background transition-colors"
-                    />
+                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                      <SelectTrigger className="h-12 border-border/50 bg-input/50 focus:bg-background transition-colors">
+                        <SelectValue placeholder="Select your year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Freshman">Freshman</SelectItem>
+                        <SelectItem value="Sophomore">Sophomore</SelectItem>
+                        <SelectItem value="Junior">Junior</SelectItem>
+                        <SelectItem value="Senior">Senior</SelectItem>
+                        <SelectItem value="Graduate">Graduate</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-3">
@@ -841,7 +892,8 @@ export default function HokieNest() {
                     </Label>
                     <Input
                       id="major"
-                      placeholder="Your major"
+                      placeholder="Computer Science"
+                      defaultValue="Computer Science"
                       className="h-12 border-border/50 bg-input/50 focus:bg-background transition-colors"
                     />
                   </div>
@@ -979,7 +1031,7 @@ export default function HokieNest() {
                 className="px-16 py-6 h-auto text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-150"
                 onClick={createProfile}
               >
-                Create Profile
+                Create Profile & Find Roommates
               </Button>
             </div>
           </Card>
@@ -1061,63 +1113,118 @@ export default function HokieNest() {
           </TabsList>
 
           <TabsContent value="roommates" className="mt-12">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-4">Find Your Perfect Roommate</h2>
-              <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-                Our smart matching system analyzes your lifestyle preferences, budget, and living habits to connect you with compatible roommates.
-              </p>
-              <Button 
-                size="lg" 
-                className="gap-2"
-                onClick={() => window.open('/roommate-matching', '_blank')}
-              >
-                <Heart className="h-5 w-5" />
-                Start Matching Now
-              </Button>
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h2 className="text-3xl font-bold mb-2">Your Roommate Matches</h2>
+                <p className="text-muted-foreground">
+                  {roommateMatches.length > 0 
+                    ? `Found ${roommateMatches.length} compatible roommate${roommateMatches.length === 1 ? '' : 's'} based on your preferences`
+                    : "No matches yet - complete your profile to find compatible roommates"
+                  }
+                </p>
+              </div>
+              {roommateMatches.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setRoommateMatches([])
+                    setActiveTab("matching")
+                  }}
+                >
+                  Find New Matches
+                </Button>
+              )}
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {roommates.map((roommate) => (
-                <Card key={roommate.id} className="p-8 card-hover border-border/50">
-                  <div className="text-center">
-                    <img
-                      src={roommate.photo || "/placeholder.svg"}
-                      alt={roommate.name}
-                      className="w-28 h-28 rounded-full mx-auto mb-6 object-cover border-2 border-border/20"
-                    />
-                    <h3 className="text-xl font-bold mb-2 tracking-tight">{roommate.name}</h3>
-                    <p className="text-muted-foreground mb-4 text-sm">
-                      {roommate.major} • {roommate.year}
-                    </p>
+            {roommateMatches.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="mb-8">
+                  <Heart className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">No matches yet</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Complete your profile through the onboarding process to find compatible roommates!
+                  </p>
+                  <Button 
+                    size="lg" 
+                    className="gap-2"
+                    onClick={() => setActiveTab("matching")}
+                  >
+                    <Heart className="h-5 w-5" />
+                    Go to Smart Matching
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {roommateMatches.map((match) => (
+                  <Card key={match.id} className="p-8 card-hover border-border/50">
+                    <div className="text-center">
+                      <img
+                        src={`https://picsum.photos/200/200?random=${Math.abs(match.name.split('').reduce((a,b) => a + b.charCodeAt(0), 0)) % 1000}`}
+                        alt={match.name}
+                        className="w-28 h-28 rounded-full mx-auto mb-6 object-cover border-2 border-border/20"
+                      />
+                      <h3 className="text-xl font-bold mb-2 tracking-tight">{match.name}</h3>
+                      <p className="text-muted-foreground mb-4 text-sm">
+                        {match.major} • {match.year}
+                      </p>
 
-                    <Badge
-                      variant="secondary"
-                      className="text-lg font-bold mb-6 bg-primary/10 text-primary border-primary/20 px-4 py-2"
-                    >
-                      {roommate.compatibility}% Match
-                    </Badge>
+                      <Badge
+                        variant="secondary"
+                        className={`text-lg font-bold mb-6 px-4 py-2 ${
+                          match.compatibility_percentage >= 80 
+                            ? "bg-green-100 text-green-700 border-green-200" 
+                            : match.compatibility_percentage >= 60 
+                            ? "bg-yellow-100 text-yellow-700 border-yellow-200"
+                            : "bg-red-100 text-red-700 border-red-200"
+                        }`}
+                      >
+                        {match.compatibility_percentage}% Match
+                      </Badge>
 
-                    <div className="flex flex-wrap gap-2 justify-center mb-8">
-                      {roommate.matchingPrefs.map((pref) => (
-                        <Badge key={pref} variant="outline" className="text-xs border-border/50">
-                          {pref}
-                        </Badge>
-                      ))}
+                      <div className="space-y-2 mb-6 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Budget:</span>
+                          <span className="font-medium">${match.budget}/month</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Cleanliness:</span>
+                          <span className="font-medium">{match.preferences.cleanliness}/5</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Noise Level:</span>
+                          <span className="font-medium">{match.preferences.noise_level}/5</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Study Time:</span>
+                          <span className="font-medium">{match.preferences.study_time}/5</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Social Level:</span>
+                          <span className="font-medium">{match.preferences.social_level}/5</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Sleep Schedule:</span>
+                          <span className="font-medium">{match.preferences.sleep_schedule}/5</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <Button className="flex-1 gap-2 h-11 font-medium">
+                          <MessageCircle className="h-4 w-4" />
+                          Message
+                        </Button>
+                        <Button variant="outline" className="gap-2 h-11 font-medium">
+                          <Heart className="h-4 w-4" />
+                          Like
+                        </Button>
+                      </div>
                     </div>
-
-                    <div className="flex gap-3">
-                      <Button className="flex-1 gap-2 h-11 font-medium">
-                        <MessageCircle className="h-4 w-4" />
-                        Message
-                      </Button>
-                      <Button variant="outline" size="icon" className="h-11 w-11 bg-transparent">
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="housing" className="mt-12">
