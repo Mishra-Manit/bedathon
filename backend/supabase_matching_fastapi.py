@@ -116,6 +116,9 @@ class RoommatePreferencesRequest(BaseModel):
     smoking: bool = Field(default=False, description="Smoking preference")
     year: str = Field(default="Junior", description="Academic year")
     major: str = Field(default="Computer Science", description="Major")
+    # New preference fields
+    max_distance_to_vt: float = Field(default=5.0, ge=0.1, le=20.0, description="Maximum distance to VT in miles")
+    preferred_amenities: List[str] = Field(default_factory=list, description="List of preferred amenities")
 
 class RoommateMatchRequest(BaseModel):
     min_compatibility: float = Field(default=0.05, ge=0.0, le=1.0, description="Minimum compatibility score")
@@ -211,7 +214,9 @@ async def create_roommate_profile(request: RoommatePreferencesRequest):
             noise=convert_preference_string_to_int(request.noise_level),
             study_time=convert_preference_string_to_int(request.study_time),
             social=convert_preference_string_to_int(request.social_level),
-            sleep=convert_preference_string_to_int(request.sleep_schedule)
+            sleep=convert_preference_string_to_int(request.sleep_schedule),
+            max_distance_to_vt=request.max_distance_to_vt,
+            preferred_amenities=request.preferred_amenities
         )
         
         with Session(engine) as session:
@@ -228,6 +233,8 @@ async def create_roommate_profile(request: RoommatePreferencesRequest):
                 existing_profile.study_time = convert_preference_string_to_int(request.study_time)
                 existing_profile.social = convert_preference_string_to_int(request.social_level)
                 existing_profile.sleep = convert_preference_string_to_int(request.sleep_schedule)
+                existing_profile.max_distance_to_vt = request.max_distance_to_vt
+                existing_profile.preferred_amenities = request.preferred_amenities
                 
                 session.add(existing_profile)
                 session.commit()
@@ -473,12 +480,14 @@ async def find_apartment_matches_for_preferences(request: RoommatePreferencesReq
             study_time=convert_preference_string_to_int(request.study_time),
             social=convert_preference_string_to_int(request.social_level),
             sleep=convert_preference_string_to_int(request.sleep_schedule),
+            max_distance_to_vt=request.max_distance_to_vt,
+            preferred_amenities=request.preferred_amenities,
             created_at=None,
             updated_at=None
         )
         
         # Find apartment matches using the existing algorithm
-        apartment_matches = matcher.find_apartment_matches_for_profile(temp_profile, limit=10)
+        apartment_matches = matcher.find_apartment_matches_for_profile(temp_profile, limit=10, preferred_bedrooms=request.preferred_bedrooms)
         
         return {
             "matches": apartment_matches,

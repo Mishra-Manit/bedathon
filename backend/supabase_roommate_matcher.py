@@ -299,61 +299,81 @@ class SupabaseRoommateMatcher:
         max_score = 0.0
         reasons = []
         
-        # Budget compatibility (30% weight)
+        # Budget compatibility (25% weight)
         if apartment.get('two_bedroom_price'):
             apartment_price = self.extract_apartment_price(apartment, 2)
             if apartment_price:
                 if profile.budget <= apartment_price <= profile.budget + 200:
-                    score += 1.0 * 0.3
+                    score += 1.0 * 0.25
                     reasons.append(f"Price ${apartment_price} fits your budget (${profile.budget})")
                 elif apartment_price < profile.budget:
-                    score += 0.8 * 0.3
+                    score += 0.8 * 0.25
                     reasons.append(f"Price ${apartment_price} is below your budget")
                 else:
-                    score += max(0, (profile.budget / apartment_price)) * 0.3
+                    score += max(0, (profile.budget / apartment_price)) * 0.25
                     reasons.append(f"Price ${apartment_price} is above your budget")
-        max_score += 0.3
+        max_score += 0.25
         
-        # Distance to VT (20% weight)
+        # Distance to VT (25% weight) - now considers user's max_distance preference
         if apartment.get('distance_to_vt'):
             distance = apartment['distance_to_vt']
-            if distance <= 1.0:
-                score += 1.0 * 0.2
+            max_distance = getattr(profile, 'max_distance_to_vt', 5.0)  # Default to 5 miles
+            
+            # If apartment is beyond user's max distance, give it a very low score
+            if distance > max_distance:
+                score += 0.1 * 0.25
+                reasons.append(f"Beyond your preferred distance ({distance} miles > {max_distance} miles)")
+            elif distance <= 1.0:
+                score += 1.0 * 0.25
                 reasons.append(f"Very close to VT: {distance} miles")
             elif distance <= 2.0:
-                score += 0.8 * 0.2
+                score += 0.8 * 0.25
                 reasons.append(f"Close to VT: {distance} miles")
             elif distance <= 3.0:
-                score += 0.6 * 0.2
+                score += 0.6 * 0.25
                 reasons.append(f"Moderate distance to VT: {distance} miles")
             else:
-                score += 0.4 * 0.2
+                score += 0.4 * 0.25
                 reasons.append(f"Far from VT: {distance} miles")
-        max_score += 0.2
+        max_score += 0.25
         
-        # Amenities compatibility (25% weight)
+        # Amenities compatibility (30% weight) - now considers user's preferred amenities
         amenities_score = 0
         apartment_amenities = apartment.get('amenities', [])
+        user_preferred_amenities = getattr(profile, 'preferred_amenities', [])
         
-        # Check for preferred amenities based on profile preferences
+        # Check user's explicitly preferred amenities (higher weight)
+        if user_preferred_amenities:
+            matched_preferred = 0
+            for preferred in user_preferred_amenities:
+                if preferred in apartment_amenities:
+                    matched_preferred += 1
+                    reasons.append(f"Has your preferred amenity: {preferred}")
+            
+            if matched_preferred > 0:
+                amenities_score += (matched_preferred / len(user_preferred_amenities)) * 0.6
+            else:
+                reasons.append("Missing your preferred amenities")
+        
+        # Check for inferred amenities based on profile preferences (lower weight)
         if profile.cleanliness >= 4 and 'Laundry' in apartment_amenities:
-            amenities_score += 0.3
+            amenities_score += 0.15
             reasons.append("Has laundry facilities (good for cleanliness)")
         
         if profile.social >= 4 and 'Pool' in apartment_amenities:
-            amenities_score += 0.2
+            amenities_score += 0.1
             reasons.append("Has pool (good for socializing)")
         
         if profile.noise <= 2 and 'Fitness Center' in apartment_amenities:
-            amenities_score += 0.2
+            amenities_score += 0.1
             reasons.append("Has fitness center (quiet activity)")
         
         if profile.tags and 'pets' in profile.tags and apartment.get('pet_friendly'):
-            amenities_score += 0.3
+            amenities_score += 0.15
             reasons.append("Pet-friendly apartment")
         
-        score += amenities_score * 0.25
-        max_score += 0.25
+        score += amenities_score * 0.30
+        max_score += 0.30
         
         # Study environment (15% weight)
         study_score = 0
@@ -445,18 +465,35 @@ class SupabaseRoommateMatcher:
                 return int(numbers[0])  # Use first number (minimum price)
         return None
 
-    def find_apartment_matches_for_profile(self, profile: Profile, limit: int = 5) -> List[Dict[str, Any]]:
+    def find_apartment_matches_for_profile(self, profile: Profile, limit: int = 5, preferred_bedrooms: int = 2) -> List[Dict[str, Any]]:
         """Find best apartment matches for a Supabase profile"""
         apartment_matches = []
         
         for apartment in self.apartments:
+            # Filter by bedroom count if specified
+            bedroom_price_key = f"{preferred_bedrooms}_bedroom_price" if preferred_bedrooms > 1 else "studio_price"
+            if preferred_bedrooms == 1:
+                bedroom_price_key = "one_bedroom_price"
+            elif preferred_bedrooms == 2:
+                bedroom_price_key = "two_bedroom_price"
+            elif preferred_bedrooms == 3:
+                bedroom_price_key = "three_bedroom_price"
+            elif preferred_bedrooms == 4:
+                bedroom_price_key = "four_bedroom_price"
+            elif preferred_bedrooms == 5:
+                bedroom_price_key = "five_bedroom_price"
+            
+            # Skip apartments that don't have the requested bedroom count
+            if not apartment.get(bedroom_price_key):
+                continue
+            
             score, reasons = self.calculate_apartment_score_for_profile(profile, apartment)
             
             match = {
                 'apartment_name': apartment['name'],
                 'apartment_address': apartment['address'],
-                'bedroom_count': 2,  # Default for now
-                'price': f"${self.extract_apartment_price(apartment, 2) or 'N/A'}",
+                'bedroom_count': preferred_bedrooms,
+                'price': f"${apartment.get(bedroom_price_key, 'N/A')}",
                 'distance_to_vt': apartment.get('distance_to_vt', 0),
                 'amenities': apartment.get('amenities', []),
                 'match_score': score,
