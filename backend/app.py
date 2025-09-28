@@ -16,7 +16,7 @@ from supabase_utils import (
     profiles_update_by_user_id,
 )
 from supabase_matching_fastapi import matching_router
-from voiceagent.router import router as voice_router
+# from voiceagent.router import router as voice_router
 
 load_dotenv()
 
@@ -32,7 +32,7 @@ app.add_middleware(
 
 # Include matching router
 app.include_router(matching_router)
-app.include_router(voice_router)
+# app.include_router(voice_router)
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 agent = ClaudeAgent(client)
