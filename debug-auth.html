@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Supabase Auth</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Supabase Auth Debug</h1>
+    <button id="signInBtn">Sign In with Google</button>
+    <button id="checkSessionBtn">Check Session</button>
+    <div id="output"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://slrjbjfpkdsmstjmajjh.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNscmpiamZwa2RzbXN0am1hampoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5OTgzMTcsImV4cCI6MjA3NDU3NDMxN30.Yw5O1_XJCidOm0qwg5TBu7_i-jmO7iEAJlIvbSWj19Y'
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        const output = document.getElementById('output')
+        
+        function log(message) {
+            console.log(message)
+            output.innerHTML += '<p>' + JSON.stringify(message, null, 2) + '</p>'
+        }
+
+        document.getElementById('signInBtn').addEventListener('click', async () => {
+            try {
+                log('Starting Google OAuth...')
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin
+                    }
+                })
+                log({ data, error })
+            } catch (e) {
+                log({ error: e.message })
+            }
+        })
+
+        document.getElementById('checkSessionBtn').addEventListener('click', async () => {
+            try {
+                const { data, error } = await supabase.auth.getSession()
+                log({ session: data.session, error })
+            } catch (e) {
+                log({ error: e.message })
+            }
+        })
+
+        // Check for auth callback
+        window.addEventListener('load', async () => {
+            const urlParams = new URLSearchParams(window.location.search)
+            const code = urlParams.get('code')
+            const error = urlParams.get('error')
+            
+            if (code || error) {
+                log({ 'URL params': { code: !!code, error } })
+                
+                if (code) {
+                    try {
+                        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+                        log({ 'Exchange result': { data, error: exchangeError } })
+                    } catch (e) {
+                        log({ 'Exchange error': e.message })
+                    }
+                }
+            }
+        })
+    </script>
+</body>
+</html>
