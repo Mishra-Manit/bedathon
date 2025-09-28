@@ -506,6 +506,7 @@ export default function HokieNest() {
   const [darkMode, setDarkMode] = useState(false)
   const [authLoading, setAuthLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("roommates")
+  const [callingPropertyId, setCallingPropertyId] = useState<string | null>(null)
   
   // Fetch apartment data
   const { apartments, loading: apartmentsLoading, error: apartmentsError } = useApartments()
@@ -520,35 +521,24 @@ export default function HokieNest() {
   const [roommateMatches, setRoommateMatches] = useState<RoommateMatch[]>([])
 
   const checkUserProfile = async (sessionUser: User | null) => {
+    if (!sessionUser) return null
+
     try {
-      if (!sessionUser) return null
       const { data } = await supabase.auth.getSession()
       const token = data.session?.access_token
       if (!token) return null
-      let resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles/me`, {
+
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       })
-      if (resp.status === 401) {
-        await supabase.auth.refreshSession()
-        const fresh = await supabase.auth.getSession()
-        const freshToken = fresh.data.session?.access_token
-        if (!freshToken) return null
-        resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles/me`, {
-          headers: {
-            Authorization: `Bearer ${freshToken}`,
-            'Content-Type': 'application/json',
-          },
-        })
-      }
+
       if (!resp.ok) return null
+
       const profile = await resp.json()
-      if (!profile || (typeof profile === 'object' && Object.keys(profile).length === 0) || !profile.user_id) {
-        return null
-      }
-      return profile
+      return profile?.id ? profile : null
     } catch (e) {
       console.error('checkUserProfile failed', e)
       return null
@@ -557,41 +547,41 @@ export default function HokieNest() {
 
   useEffect(() => {
     let isMounted = true
-    
-    // Handle OAuth callback parameters
-    const urlParams = new URLSearchParams(window.location.search)
-    const code = urlParams.get('code')
-    const error = urlParams.get('error')
-    const authError = urlParams.get('auth_error')
-    
-    if (authError) {
-      alert(`Authentication failed: ${decodeURIComponent(authError)}`)
-      window.history.replaceState({}, document.title, window.location.pathname)
-    }
-    
-    if (error) {
-      alert(`OAuth error: ${error}`)
-      window.history.replaceState({}, document.title, window.location.pathname)
-    }
-    
-    // If we have a code, exchange it for a session
-    if (code) {
-      console.log('Processing OAuth code...')
-      supabase.auth.exchangeCodeForSession(code).then(({ data, error: exchangeError }) => {
-        if (exchangeError) {
-          console.error('Session exchange error:', exchangeError)
-          alert(`Authentication failed: ${exchangeError.message}`)
-        } else if (data.session) {
-          console.log('Session created successfully!')
+
+    const handleAuthCallback = async () => {
+      const urlParams = new URLSearchParams(window.location.search)
+      const code = urlParams.get('code')
+      const error = urlParams.get('error')
+      const authError = urlParams.get('auth_error')
+
+      // Handle errors
+      if (authError || error) {
+        const errorMessage = authError ? decodeURIComponent(authError) : error
+        console.error('OAuth error:', errorMessage)
+        alert(`Authentication failed: ${errorMessage}`)
+        window.history.replaceState({}, document.title, window.location.pathname)
+        return
+      }
+
+      // Exchange code for session
+      if (code) {
+        try {
+          console.log('Processing OAuth code...')
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          if (exchangeError) {
+            console.error('Session exchange error:', exchangeError)
+            alert(`Authentication failed: ${exchangeError.message}`)
+          }
+        } catch (e) {
+          console.error('Exchange error:', e)
+          alert(`Authentication failed: ${e instanceof Error ? e.message : 'Unknown error'}`)
+        } finally {
+          window.history.replaceState({}, document.title, window.location.pathname)
         }
-        // Clean up the URL
-        window.history.replaceState({}, document.title, window.location.pathname)
-      }).catch((e) => {
-        console.error('Exchange error:', e)
-        alert(`Authentication failed: ${e.message}`)
-        window.history.replaceState({}, document.title, window.location.pathname)
-      })
+      }
     }
+
+    handleAuthCallback()
     
     ;(async () => {
       const { data } = await supabase.auth.getSession()
@@ -626,41 +616,121 @@ export default function HokieNest() {
     }
   }, [])
 
+  // Convert numeric preferences (1-5) to string levels expected by matching API
+  const intToPreference = (value: number | null | undefined) => {
+    if (!value) return 'MEDIUM'
+    if (value <= 1) return 'VERY_LOW'
+    if (value === 2) return 'LOW'
+    if (value === 3) return 'MEDIUM'
+    if (value === 4) return 'HIGH'
+    return 'VERY_HIGH'
+  }
+
+  // Refresh roommate matches from saved profile
+  const refreshMatchesFromProfile = async () => {
+    try {
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
+      if (!token) return
+
+      const profile = await checkUserProfile(data.session?.user ?? null)
+      if (!profile?.id) return
+
+      const roommateMatchingData = {
+        name: profile.name,
+        email: data.session?.user?.email || '',
+        budget_min: profile.budget,
+        budget_max: profile.budget + 200,
+        preferred_bedrooms: 2,
+        cleanliness: intToPreference(profile.cleanliness),
+        noise_level: intToPreference(profile.noise),
+        study_time: intToPreference(profile.study_time),
+        social_level: intToPreference(profile.social),
+        sleep_schedule: intToPreference(profile.sleep),
+        pet_friendly: false,
+        smoking: false,
+        year: profile.year,
+        major: profile.major || 'Undeclared',
+        min_compatibility: 0.5,
+      }
+
+      const matchesResp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/matching/roommate-matches`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(roommateMatchingData),
+      })
+
+      if (matchesResp.ok) {
+        const matchesData = await matchesResp.json()
+        setRoommateMatches(matchesData.matches || [])
+      }
+    } catch (e) {
+      console.error('Failed to refresh roommate matches from profile', e)
+    }
+  }
+
+  // Auto-refresh matches whenever user lands on dashboard
+  useEffect(() => {
+    if (currentView === 'dashboard' && user) {
+      refreshMatchesFromProfile()
+    }
+  }, [currentView, user])
+
   const signInWithGoogle = async () => {
+    if (authLoading) return // Prevent multiple simultaneous sign-in attempts
+
     try {
       setAuthLoading(true)
-      
       console.log('Starting Google OAuth...')
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
+
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { 
+        options: {
           redirectTo: `${window.location.origin}/`,
-          queryParams: { 
+          queryParams: {
             prompt: 'select_account',
             access_type: 'offline'
           }
         },
       })
-      
-      console.log('OAuth response:', { data, error })
-      
-      if (error) throw error
-      
-      // The user will be redirected to Google, then back to home
-      console.log('Redirecting to Google OAuth...')
-      
-    } catch (e: any) {
-      console.error('Google sign-in failed', e)
-      alert(`Sign-in failed: ${e?.message || e}`)
+
+      if (error) {
+        console.error('OAuth initialization failed:', error)
+        alert(`Sign-in failed: ${error.message}`)
+        setAuthLoading(false)
+      }
+      // Note: Don't set loading to false here since we're redirecting to Google
+    } catch (e) {
+      console.error('Unexpected sign-in error:', e)
+      alert(`Sign-in failed: ${e instanceof Error ? e.message : 'Unknown error'}`)
       setAuthLoading(false)
     }
-    // Don't set loading to false here since we're redirecting
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
-    setCurrentView("landing")
+    if (authLoading) return
+    setAuthLoading(true)
+    const signOutWithTimeout = async (ms: number) => {
+      return Promise.race([
+        supabase.auth.signOut(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+      ])
+    }
+    try {
+      await signOutWithTimeout(5000)
+    } catch (e) {
+      console.warn('Global sign-out failed or timed out. Falling back to local sign-out.', e)
+      try {
+        await supabase.auth.signOut({ scope: 'local' })
+      } catch (err) {
+        console.error('Local sign-out also failed', err)
+      }
+    } finally {
+      setUser(null)
+      setRoommateMatches([])
+      setCurrentView("landing")
+      setAuthLoading(false)
+    }
   }
 
   const toggleDarkMode = () => {
@@ -843,6 +913,27 @@ export default function HokieNest() {
   // Format apartments for display
   const properties = apartments.map(apartment => formatApartmentForDisplay(apartment))
 
+  const requestLatestInfoCall = async (propertyId: string) => {
+    try {
+      setCallingPropertyId(propertyId)
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/voice/call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to_number: '+16505056094' }),
+      })
+      if (!resp.ok) {
+        const text = await resp.text()
+        throw new Error(text || 'Failed to initiate call')
+      }
+      alert('Calling you now with our housing agent to get the latest info...')
+    } catch (e) {
+      console.error('Failed to start voice call', e)
+      alert('Could not place the call. Please try again in a moment.')
+    } finally {
+      setCallingPropertyId(null)
+    }
+  }
+
   if (currentView === "landing") {
     return (
       <div className="min-h-screen bg-background">
@@ -859,7 +950,13 @@ export default function HokieNest() {
                 {user ? (
                   <Button variant="outline" onClick={() => setCurrentView("dashboard")}>Dashboard</Button>
                 ) : (
-                  <Button variant="outline" onClick={signInWithGoogle}>Sign in with Google</Button>
+                  <Button
+                    variant="outline"
+                    onClick={signInWithGoogle}
+                    disabled={authLoading}
+                  >
+                    {authLoading ? 'Signing in...' : 'Sign in with Google'}
+                  </Button>
                 )}
               </div>
             </div>
@@ -885,8 +982,9 @@ export default function HokieNest() {
                 size="lg"
                 className="text-lg px-10 py-6 h-auto font-medium shadow-lg hover:shadow-xl transition-all duration-150"
                 onClick={() => (user ? setCurrentView("dashboard") : signInWithGoogle())}
+                disabled={authLoading}
               >
-                {user ? "Go to Dashboard" : "Find Roommates"}
+                {user ? "Go to Dashboard" : authLoading ? "Signing in..." : "Find Roommates"}
               </Button>
               <Button
                 size="lg"
@@ -1165,9 +1263,21 @@ export default function HokieNest() {
                 </SheetContent>
               </Sheet>
               {user ? (
-                <Button variant="ghost" onClick={signOut}>Sign Out</Button>
+                <Button
+                  variant="ghost"
+                  onClick={signOut}
+                  disabled={authLoading}
+                >
+                  {authLoading ? 'Signing out...' : 'Sign Out'}
+                </Button>
               ) : (
-                <Button variant="ghost" onClick={signInWithGoogle}>Sign In</Button>
+                <Button
+                  variant="ghost"
+                  onClick={signInWithGoogle}
+                  disabled={authLoading}
+                >
+                  {authLoading ? 'Signing in...' : 'Sign In'}
+                </Button>
               )}
             </div>
           </div>
@@ -1335,7 +1445,24 @@ export default function HokieNest() {
                     <div className="flex-1">
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="text-2xl font-bold tracking-tight">{property.name}</h3>
-                        <span className="text-3xl font-bold text-primary">{property.price}</span>
+                        <div className="flex flex-col items-end gap-2">
+                          <span className="text-3xl font-bold text-primary">{property.price}</span>
+                          {property.price === 'Contact for pricing' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 font-medium"
+                              onClick={() => requestLatestInfoCall(property.id)}
+                              disabled={callingPropertyId === property.id}
+                            >
+                              {callingPropertyId === property.id ? (
+                                <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Calling…</span>
+                              ) : (
+                                <span className="flex items-center gap-2"><Phone className="h-4 w-4" /> Get the latest information</span>
+                              )}
+                            </Button>
+                          )}
+                        </div>
                       </div>
 
                       <p className="text-muted-foreground mb-4 text-lg">
