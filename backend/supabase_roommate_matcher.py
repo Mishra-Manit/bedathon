@@ -43,6 +43,21 @@ class SupabaseRoommateMatcher:
         # Initialize Supabase profiles connector
         self.profiles_connector = SupabaseProfilesConnector()
 
+        # Load external datasets (restaurants and amenities) for lifestyle scoring
+        base_dir = os.path.dirname(__file__)
+        restaurants_path = os.path.join(base_dir, "restaurants_data.json")
+        amenities_path = os.path.join(base_dir, "amenities_data.json")
+        try:
+            with open(restaurants_path, "r") as f:
+                self.restaurants: List[Dict[str, Any]] = json.load(f)
+        except Exception:
+            self.restaurants = []
+        try:
+            with open(amenities_path, "r") as f:
+                self.external_amenities: List[Dict[str, Any]] = json.load(f)
+        except Exception:
+            self.external_amenities = []
+
     def load_apartments_from_db(self) -> List[Dict[str, Any]]:
         """Load apartments from the Supabase database"""
         apartments = []
@@ -358,6 +373,55 @@ class SupabaseRoommateMatcher:
             score += 0.8 * 0.1
             reasons.append(f"Parking available: {apartment['parking']}")
         max_score += 0.1
+
+        # Lifestyle proximity using restaurants and city amenities (10% weight)
+        # Heuristic: apartments closer to VT tend to be closer to restaurants/amenities in provided datasets
+        lifestyle_weight = 0.10
+        lifestyle_score = 0.0
+        vt_distance = apartment.get('distance_to_vt', apartment.get('distance_to_burruss', None))
+        if vt_distance is not None:
+            # Prefer <= 2 miles strongly, linearly decay until 5 miles
+            if vt_distance <= 2.0:
+                lifestyle_score = 1.0
+            elif vt_distance >= 5.0:
+                lifestyle_score = 0.2
+            else:
+                lifestyle_score = max(0.2, 1.0 - (vt_distance - 2.0) / 3.0)
+
+            # Tailor to profile preferences: social/study bias towards being near campus hotspots
+            highlight_names: List[str] = []
+            if profile.social >= 4 and self.restaurants:
+                # Mention up to 2 popular nearby restaurants
+                highlight_names.extend([r.get('name') for r in self.restaurants[:2]])
+            if profile.study_time >= 4:
+                # Mention library if present in dataset
+                lib = next((a for a in self.external_amenities if (a.get('category') == 'library')), None)
+                if lib:
+                    highlight_names.append(lib.get('name'))
+
+            if highlight_names:
+                reasons.append(f"Close to campus hotspots: {', '.join(n for n in highlight_names if n)}")
+
+        score += lifestyle_score * lifestyle_weight
+        max_score += lifestyle_weight
+
+        # Shopping proximity (5% weight) - simple preference for being within ~2.5 miles of VT
+        shopping_weight = 0.05
+        shopping_score = 0.0
+        if vt_distance is not None:
+            if vt_distance <= 2.5:
+                shopping_score = 1.0
+                # Mention a shopping amenity if available
+                shop = next((a for a in self.external_amenities if a.get('category') == 'shopping'), None)
+                if shop:
+                    reasons.append(f"Convenient shopping nearby (e.g., {shop.get('name')})")
+            elif vt_distance <= 4.0:
+                shopping_score = 0.6
+            else:
+                shopping_score = 0.3
+
+        score += shopping_score * shopping_weight
+        max_score += shopping_weight
         
         return score / max_score if max_score > 0 else 0, reasons
 

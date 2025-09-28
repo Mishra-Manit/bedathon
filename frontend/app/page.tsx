@@ -507,6 +507,7 @@ export default function HokieNest() {
   const [authLoading, setAuthLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("roommates")
   const [callingPropertyId, setCallingPropertyId] = useState<string | null>(null)
+  const [housingMatches, setHousingMatches] = useState<Record<string, { match_percentage: number; reasons: string[] }>>({})
   
   // Fetch apartment data
   const { apartments, loading: apartmentsLoading, error: apartmentsError } = useApartments()
@@ -933,6 +934,36 @@ export default function HokieNest() {
       setCallingPropertyId(null)
     }
   }
+
+  const getHousingMatchClass = (percentage: number) => {
+    if (percentage >= 80) return "bg-green-100 text-green-700 border-green-200"
+    if (percentage >= 60) return "bg-yellow-100 text-yellow-700 border-yellow-200"
+    return "bg-red-100 text-red-700 border-red-200"
+  }
+
+  // Fetch apartment compatibility for Browse Housing when user switches to that tab
+  useEffect(() => {
+    if (activeTab !== 'housing' || !user) return
+    ;(async () => {
+      try {
+        const profile = await checkUserProfile(user)
+        if (!profile?.id) return
+        const resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/matching/apartment-matches/${profile.id}?limit=100`)
+        if (!resp.ok) return
+        const data = await resp.json()
+        const map: Record<string, { match_percentage: number; reasons: string[] }> = {}
+        for (const m of (data.matches || [])) {
+          map[m.apartment_name] = {
+            match_percentage: m.match_percentage,
+            reasons: m.reasons || []
+          }
+        }
+        setHousingMatches(map)
+      } catch (e) {
+        console.error('Failed to fetch housing compatibility', e)
+      }
+    })()
+  }, [activeTab, user])
 
   if (currentView === "landing") {
     return (
@@ -1444,7 +1475,17 @@ export default function HokieNest() {
                     />
                     <div className="flex-1">
                       <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-2xl font-bold tracking-tight">{property.name}</h3>
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-2xl font-bold tracking-tight">{property.name}</h3>
+                          {housingMatches[property.name] && (
+                            <Badge
+                              variant="secondary"
+                              className={`text-sm font-semibold ${getHousingMatchClass(housingMatches[property.name].match_percentage)}`}
+                            >
+                              {housingMatches[property.name].match_percentage}% Match
+                            </Badge>
+                          )}
+                        </div>
                         <div className="flex flex-col items-end gap-2">
                           <span className="text-3xl font-bold text-primary">{property.price}</span>
                           {property.price === 'Contact for pricing' && (
@@ -1495,7 +1536,17 @@ export default function HokieNest() {
                         </DialogTrigger>
                         <DialogContent className="max-w-3xl backdrop-blur-md bg-background/95">
                           <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold">{property.name}</DialogTitle>
+                          <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                            {property.name}
+                            {housingMatches[property.name] && (
+                              <Badge
+                                variant="secondary"
+                                className={`text-sm font-semibold ${getHousingMatchClass(housingMatches[property.name].match_percentage)}`}
+                              >
+                                {housingMatches[property.name].match_percentage}% Match
+                              </Badge>
+                            )}
+                          </DialogTitle>
                           </DialogHeader>
                           <div className="space-y-8">
                             <img
@@ -1582,6 +1633,17 @@ export default function HokieNest() {
                                 </div>
                               </div>
                             </div>
+
+                            {housingMatches[property.name]?.reasons?.length ? (
+                              <div>
+                                <h4 className="font-bold mb-4 text-lg">Why this matches you</h4>
+                                <ul className="list-disc list-inside text-sm text-muted-foreground">
+                                  {housingMatches[property.name].reasons.map((r, i) => (
+                                    <li key={i}>{r}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
 
                             <div className="flex gap-4">
                               <Button className="flex-1 gap-2 h-12 font-medium shadow-md hover:shadow-lg transition-all duration-150">
