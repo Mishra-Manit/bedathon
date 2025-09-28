@@ -480,8 +480,8 @@ async def find_apartment_matches_for_preferences(request: RoommatePreferencesReq
             study_time=convert_preference_string_to_int(request.study_time),
             social=convert_preference_string_to_int(request.social_level),
             sleep=convert_preference_string_to_int(request.sleep_schedule),
-            max_distance_to_vt=request.max_distance_to_vt,
-            preferred_amenities=request.preferred_amenities,
+            max_distance_to_vt=getattr(request, 'max_distance_to_vt', 5.0),  # Default if not provided
+            preferred_amenities=getattr(request, 'preferred_amenities', []),  # Default if not provided
             created_at=None,
             updated_at=None
         )
