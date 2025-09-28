@@ -11,6 +11,9 @@ supabase==2.6.0
 PyJWT[crypto]==2.9.0
 cryptography==43.0.1
 twilio==9.3.1
-// optional data libs if needed later
+openai==1.51.0
+# required by FastAPI to parse form-data (Twilio webhooks)
+python-multipart==0.0.9
+# optional data libs if needed later
 pandas==2.1.4
 openpyxl==3.1.2

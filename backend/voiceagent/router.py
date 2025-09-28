@@ -1,15 +1,22 @@
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, List
+import json
+import asyncio
+from datetime import datetime
 
 from twilio.rest import Client as TwilioClient
-from twilio.twiml.voice_response import VoiceResponse
+from twilio.twiml.voice_response import VoiceResponse, Gather
+import openai
 
-from .config import get_twilio_settings
+from .config import get_twilio_settings, get_openai_settings
 import os
 
 
 router = APIRouter(prefix="/voice", tags=["voice"])
+
+# In-memory conversation state storage (in production, use Redis or database)
+conversation_sessions: Dict[str, Dict] = {}
 
 
 class OutboundCallRequest(BaseModel):
@@ -17,9 +24,87 @@ class OutboundCallRequest(BaseModel):
     prompt: Optional[str] = None
 
 
+class ConversationState(BaseModel):
+    call_sid: str
+    messages: List[Dict[str, str]]
+    context: str
+    last_activity: datetime
+
+
 def _create_twilio_client() -> TwilioClient:
     settings = get_twilio_settings()
     return TwilioClient(settings.account_sid, settings.auth_token)
+
+
+def _create_openai_client():
+    settings = get_openai_settings()
+    return openai.OpenAI(api_key=settings.api_key)
+
+
+def _get_conversation_context() -> str:
+    """Load the housing agent context from prompt.md"""
+    try:
+        prompt_path = os.path.join(os.path.dirname(__file__), "prompt.md")
+        with open(prompt_path, "r") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "You are a helpful voice assistant for Virginia Tech students looking for housing."
+
+
+def _get_or_create_conversation(call_sid: str) -> Dict:
+    """Get existing conversation or create a new one"""
+    if call_sid not in conversation_sessions:
+        conversation_sessions[call_sid] = {
+            "messages": [
+                {
+                    "role": "system",
+                    "content": _get_conversation_context() + "\n\nYou are speaking over the phone, so keep responses concise and conversational. Ask one question at a time."
+                }
+            ],
+            "context": _get_conversation_context(),
+            "last_activity": datetime.now(),
+        }
+    else:
+        conversation_sessions[call_sid]["last_activity"] = datetime.now()
+
+    return conversation_sessions[call_sid]
+
+
+async def _get_ai_response(call_sid: str, user_input: str) -> str:
+    """Get AI response using OpenAI"""
+    try:
+        client = _create_openai_client()
+        settings = get_openai_settings()
+
+        conversation = _get_or_create_conversation(call_sid)
+
+        # Add user message to conversation
+        conversation["messages"].append({
+            "role": "user",
+            "content": user_input
+        })
+
+        # Get AI response
+        response = client.chat.completions.create(
+            model=settings.model,
+            messages=conversation["messages"],
+            max_tokens=150,  # Keep responses short for phone calls
+            temperature=0.7,
+        )
+
+        ai_response = response.choices[0].message.content
+
+        # Add AI response to conversation
+        conversation["messages"].append({
+            "role": "assistant",
+            "content": ai_response
+        })
+
+        return ai_response
+
+    except Exception as e:
+        print(f"Error getting AI response: {e}")
+        return "I'm having trouble processing that. Could you please repeat what you said?"
 
 
 @router.post("/call")
@@ -51,29 +136,128 @@ def start_outbound_call(req: OutboundCallRequest):
 
 @router.post("/answer")
 @router.get("/answer")
-async def answer_call(request: Request, prompt: Optional[str] = None):
-    """Basic TwiML that greets and hangs up.
+async def answer_call(request: Request):
+    """Initial call answer - starts the conversation"""
+    form = await request.form()
+    call_sid = form.get("CallSid", "unknown")
 
-    This is the minimal placeholder while we wire in OpenAI Realtime.
-    """
+    # Initialize conversation
+    _get_or_create_conversation(call_sid)
+
     response = VoiceResponse()
-    message = (
-        prompt
-        or "Hello from VT Hacks voice agent. This is a test call. Goodbye."
+
+    # Initial greeting
+    initial_message = "Hello! I'm your housing assistant for Virginia Tech students. I can help you find apartments, negotiate prices, and schedule tours. How can I help you today?"
+
+    response.say(initial_message, voice="Polly.Joanna")
+
+    # Set up to gather speech input
+    gather = Gather(
+        input="speech",
+        action="/voice/process-speech",
+        speech_timeout="auto",
+        language="en-US",
+        enhanced=True
     )
-    response.say(message, voice="Polly.Joanna")
+    gather.say("Please tell me what you're looking for.", voice="Polly.Joanna")
+    response.append(gather)
+
+    # Fallback if no input detected
+    response.say("I didn't hear anything. Please call back when you're ready to chat!", voice="Polly.Joanna")
     response.hangup()
+
+    return Response(content=str(response), media_type="application/xml")
+
+
+@router.post("/process-speech")
+async def process_speech(request: Request):
+    """Process user speech input and continue conversation"""
+    form = await request.form()
+    call_sid = form.get("CallSid", "unknown")
+    speech_result = form.get("SpeechResult", "")
+    confidence = form.get("Confidence", "0.0")
+
+    response = VoiceResponse()
+
+    # Check if speech was understood
+    if not speech_result or float(confidence) < 0.5:
+        response.say("I didn't quite catch that. Could you please repeat?", voice="Polly.Joanna")
+        gather = Gather(
+            input="speech",
+            action="/voice/process-speech",
+            speech_timeout="auto",
+            language="en-US",
+            enhanced=True
+        )
+        response.append(gather)
+        return Response(content=str(response), media_type="application/xml")
+
+    try:
+        # Get AI response
+        ai_response = await _get_ai_response(call_sid, speech_result)
+
+        # Speak the AI response
+        response.say(ai_response, voice="Polly.Joanna")
+
+        # Continue conversation or end based on response
+        if any(keyword in ai_response.lower() for keyword in ["goodbye", "thank you for calling", "have a great day"]):
+            response.hangup()
+        else:
+            # Continue gathering input
+            gather = Gather(
+                input="speech",
+                action="/voice/process-speech",
+                speech_timeout="auto",
+                language="en-US",
+                enhanced=True
+            )
+            response.append(gather)
+
+            # Fallback after timeout
+            response.say("I didn't hear a response. Feel free to call back anytime!", voice="Polly.Joanna")
+            response.hangup()
+
+    except Exception as e:
+        print(f"Error processing speech: {e}")
+        response.say("I'm experiencing technical difficulties. Please try calling back in a moment.", voice="Polly.Joanna")
+        response.hangup()
+
     return Response(content=str(response), media_type="application/xml")
 
 
 @router.get("/env-check")
 def env_check():
-    """Return presence (not values) of required Twilio env vars to aid debugging."""
+    """Return presence (not values) of required env vars to aid debugging."""
     present = {
         "TWILIO_ACCOUNT_SID": bool(os.getenv("TWILIO_ACCOUNT_SID", "").strip()),
         "TWILIO_AUTH_TOKEN": bool(os.getenv("TWILIO_AUTH_TOKEN", "").strip()),
         "TWILIO_FROM_NUMBER": bool(os.getenv("TWILIO_FROM_NUMBER", "").strip()),
         "VOICE_WEBHOOK_URL": bool(os.getenv("VOICE_WEBHOOK_URL", "").strip()),
+        "OPENAI_API_KEY": bool(os.getenv("OPENAI_API_KEY", "").strip()),
     }
     return {"present": present}
+
+
+@router.get("/conversations")
+def get_conversations():
+    """Debug endpoint to view active conversations"""
+    return {
+        "active_conversations": len(conversation_sessions),
+        "sessions": {
+            call_sid: {
+                "message_count": len(session["messages"]),
+                "last_activity": session["last_activity"].isoformat(),
+            }
+            for call_sid, session in conversation_sessions.items()
+        }
+    }
+
+
+@router.delete("/conversations/{call_sid}")
+def clear_conversation(call_sid: str):
+    """Clear a specific conversation session"""
+    if call_sid in conversation_sessions:
+        del conversation_sessions[call_sid]
+        return {"message": f"Conversation {call_sid} cleared"}
+    return {"message": "Conversation not found"}
 
