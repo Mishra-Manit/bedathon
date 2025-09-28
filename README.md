@@ -119,6 +119,17 @@ python import_apartments_to_db.py
 
 > **Note:** Voice call endpoint exists in codebase but may be disabled.
 
+## 🤖 AI Agent - Apartment Information Service
+
+HokieNest includes an intelligent AI agent that streamlines the apartment hunting process:
+
+- **Automated Calling** → Agent calls apartments that roommates have selected
+- **Information Gathering** → Collects current pricing, bedroom availability, amenities, and lease terms
+- **Summary Generation** → Creates comprehensive email summaries with all collected details
+- **Real-time Updates** → Ensures apartment information is current and accurate
+
+The AI agent eliminates the need for students to make multiple phone calls, saving time and providing standardized information across all potential housing options.
+
 ## 🎨 Frontend Walkthrough
 
 - **Onboarding** → Form for budget, bedrooms, lifestyle preferences
@@ -154,6 +165,24 @@ python import_apartments_to_db.py
 - [ ] **Group-based** housing recommendations
 - [ ] **Map view** with filters by distance/amenities
 - [ ] **Availability and contact** integration per apartment
+
+## 📸 Screenshots
+
+> Add screenshots to `frontend/public/` and embed them here:
+
+```markdown
+![Landing Page](frontend/public/screenshots/landing.png)
+![Onboarding](frontend/public/screenshots/onboarding.png)
+![Roommate Matches](frontend/public/screenshots/roommate-matches.png)
+![Apartment Matches](frontend/public/screenshots/apartment-matches.png)
+```
+
+## 🤝 Contributing
+
+1. **Fork** this repo
+2. **Create** a feature branch (`git checkout -b feature/my-feature`)
+3. **Run** linters/tests before pushing
+4. **Open** a PR with description + screenshots if UI changes
 
 ## 📝 License
 
