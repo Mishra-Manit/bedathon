@@ -37,6 +37,12 @@ class TwilioSettings:
     voice_webhook_url: Optional[str] = None
 
 
+@dataclass
+class OpenAISettings:
+    api_key: str
+    model: str = "gpt-4o-mini"
+
+
 def get_twilio_settings() -> TwilioSettings:
     account_sid = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
     auth_token = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
@@ -62,6 +68,19 @@ def get_twilio_settings() -> TwilioSettings:
         auth_token=auth_token,
         from_number=from_number,
         voice_webhook_url=voice_webhook_url,
+    )
+
+
+def get_openai_settings() -> OpenAISettings:
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
+
+    if not api_key:
+        raise RuntimeError("Missing required OPENAI_API_KEY environment variable")
+
+    return OpenAISettings(
+        api_key=api_key,
+        model=model,
     )
 
 
