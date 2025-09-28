@@ -5,6 +5,7 @@ import anthropic
 import os
 from dotenv import load_dotenv
 from typing import List, Optional
+import logging
 
 from agent import ClaudeAgent, AgentRequest, AgentResponse
 from models import ProfileCreate, ProfileRead
@@ -134,6 +135,7 @@ async def create_profile(profile_data: ProfileCreate, user=Depends(get_current_u
     except HTTPException:
         raise
     except Exception as e:
+        logging.exception("Unexpected error creating profile for user_id=%s", getattr(user, "id", None))
         raise HTTPException(status_code=500, detail=f"Unexpected error creating profile: {str(e)}")
 
 
@@ -145,6 +147,7 @@ async def get_my_profile(user=Depends(get_current_user)):
     except HTTPException:
         raise
     except Exception as e:
+        logging.exception("Error fetching profile for user_id=%s", getattr(user, "id", None))
         raise HTTPException(status_code=500, detail=f"Error fetching profile: {str(e)}")
 
 
@@ -164,6 +167,7 @@ async def update_my_profile(profile_data: ProfileCreate, user=Depends(get_curren
     except HTTPException:
         raise
     except Exception as e:
+        logging.exception("Error updating profile for user_id=%s", getattr(user, "id", None))
         raise HTTPException(status_code=500, detail=f"Error updating profile: {str(e)}")
 
 

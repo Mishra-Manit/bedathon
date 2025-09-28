@@ -695,7 +695,50 @@ export default function HokieNest() {
         return 'VERY_HIGH'
       }
 
-      // Use the roommate-preferences endpoint which adds to Supabase for matching
+      // Convert slider values to integers (1-5) for Supabase profiles table
+      const convertPreferenceToInt = (value: number) => {
+        if (value <= 1) return 1
+        if (value <= 2) return 2
+        if (value <= 3) return 3
+        if (value <= 4) return 4
+        return 5
+      }
+
+      // First, create/update the user's profile in the Supabase profiles table via backend
+      const profilesPayload = {
+        name,
+        year,
+        major,
+        budget,
+        move_in,
+        tags: [],
+        cleanliness: convertPreferenceToInt(preferences.cleanliness[0]),
+        noise: convertPreferenceToInt(preferences.noiseLevel[0]),
+        study_time: convertPreferenceToInt(preferences.studyTime[0]),
+        social: convertPreferenceToInt(preferences.socialLevel[0]),
+        sleep: convertPreferenceToInt(preferences.sleepSchedule[0])
+      }
+
+      const profilesResp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(profilesPayload),
+      })
+
+      if (!profilesResp.ok) {
+        const text = await profilesResp.text()
+        console.error('Failed to create profile in Supabase profiles table:', text)
+        alert(`Failed to create profile (profiles table): ${text}`)
+        return
+      }
+
+      const createdProfile = await profilesResp.json()
+      console.log('Profile created in Supabase (profiles table):', createdProfile)
+
+      // Use the roommate-preferences endpoint which stores profile data for matching
       const roommateProfileData = {
         name,
         email: data.session?.user?.email || '',
