@@ -87,7 +87,9 @@ function RoommateMatchingInterface() {
     pet_friendly: false,
     smoking: false,
     year: 'Junior',
-    major: 'Computer Science'
+    major: 'Computer Science',
+    max_distance_to_vt: 5.0,
+    preferred_amenities: []
   })
 
   const [roommateMatches, setRoommateMatches] = useState<RoommateMatch[]>([])
@@ -161,13 +163,33 @@ function RoommateMatchingInterface() {
 
   const fetchApartmentMatches = async () => {
     try {
+      // Create a complete profile object with all preferences for apartment matching
+      const apartmentProfileData = {
+        name: profile.name || 'User',
+        email: profile.email || '',
+        budget_min: profile.budget_min,
+        budget_max: profile.budget_max,
+        preferred_bedrooms: profile.preferred_bedrooms,
+        cleanliness: profile.cleanliness,
+        noise_level: profile.noise_level,
+        study_time: profile.study_time,
+        social_level: profile.social_level,
+        sleep_schedule: profile.sleep_schedule,
+        pet_friendly: profile.pet_friendly,
+        smoking: profile.smoking,
+        year: profile.year,
+        major: profile.major,
+        max_distance_to_vt: profile.max_distance_to_vt,
+        preferred_amenities: profile.preferred_amenities
+      }
+
       // Use the new apartment matching endpoint that works with user preferences
       const response = await fetch(`${API_BASE_URL}/matching/apartment-matches-for-preferences`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(profile),
+        body: JSON.stringify(apartmentProfileData),
       })
 
       if (response.ok) {
@@ -829,7 +851,9 @@ export default function HokieNest() {
         pet_friendly: false,
         smoking: false,
         year,
-        major
+        major,
+        max_distance_to_vt: profile.max_distance_to_vt,
+        preferred_amenities: profile.preferred_amenities
       }
 
       let resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/matching/roommate-preferences`, {
@@ -1272,6 +1296,65 @@ export default function HokieNest() {
                     </Label>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Distance and Amenities Preferences */}
+            <div className="mt-16 pt-12 border-t border-border/50">
+              <h2 className="text-3xl font-bold mb-8 tracking-tight">Apartment Preferences</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Distance Preference */}
+                <div className="space-y-4">
+                  <Label htmlFor="max_distance" className="text-lg font-medium">
+                    Maximum Distance to VT (miles)
+                  </Label>
+                  <div className="space-y-3">
+                    <Slider
+                      value={[profile.max_distance_to_vt]}
+                      onValueChange={(value) => setProfile({ ...profile, max_distance_to_vt: value[0] })}
+                      max={10}
+                      min={0.5}
+                      step={0.5}
+                      className="mt-3"
+                    />
+                    <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                      <span>0.5 miles</span>
+                      <span className="font-medium">{profile.max_distance_to_vt} miles</span>
+                      <span>10 miles</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Amenities Preference */}
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium">Preferred Amenities</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {["Pool", "Fitness Center", "Laundry", "Parking", "Pet Friendly", "WiFi"].map((amenity) => (
+                      <div key={amenity} className="flex items-center space-x-3">
+                        <Checkbox 
+                          id={amenity}
+                          checked={profile.preferred_amenities.includes(amenity)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setProfile({
+                                ...profile,
+                                preferred_amenities: [...profile.preferred_amenities, amenity]
+                              })
+                            } else {
+                              setProfile({
+                                ...profile,
+                                preferred_amenities: profile.preferred_amenities.filter(a => a !== amenity)
+                              })
+                            }
+                          }}
+                        />
+                        <Label htmlFor={amenity} className="text-sm font-medium">
+                          {amenity}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 

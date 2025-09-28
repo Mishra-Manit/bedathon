@@ -17,6 +17,9 @@ class ProfileBase(SQLModel):
     move_in: Optional[date] = None
     tags: List[str] = Field(default_factory=list, sa_column=Column(JSON))
     cleanliness: int; noise: int; study_time: int; social: int; sleep: int
+    # New preference fields
+    max_distance_to_vt: Optional[float] = Field(default=5.0, description="Maximum distance to VT in miles")
+    preferred_amenities: List[str] = Field(default_factory=list, sa_column=Column(JSON), description="Preferred amenities")
 
 class Profile(ProfileBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
