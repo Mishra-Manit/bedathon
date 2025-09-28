@@ -106,25 +106,97 @@ function RoommateMatchingInterface() {
     
     setLoading(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/matching/roommate-preferences`, {
+      // Ensure user is signed in to create a Supabase profile row
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
+      if (!token) {
+        alert('You need to sign in first')
+        setLoading(false)
+        return
+      }
+
+      // Helpers to map preference strings to integers for Supabase profiles table
+      const convertPreferenceToInt = (value: string) => {
+        const v = String(value).toUpperCase()
+        if (v === 'VERY_LOW') return 1
+        if (v === 'LOW') return 2
+        if (v === 'MEDIUM') return 3
+        if (v === 'HIGH') return 4
+        return 5
+      }
+
+      // 1) Create/update profile row in Supabase via backend
+      const profilesPayload = {
+        name: profile.name,
+        year: profile.year,
+        major: profile.major,
+        budget: profile.budget_min,
+        move_in: null as any,
+        tags: [] as string[],
+        cleanliness: convertPreferenceToInt(profile.cleanliness as any),
+        noise: convertPreferenceToInt(profile.noise_level as any),
+        study_time: convertPreferenceToInt(profile.study_time as any),
+        social: convertPreferenceToInt(profile.social_level as any),
+        sleep: convertPreferenceToInt(profile.sleep_schedule as any),
+      }
+
+      const profilesResp = await fetch(`${API_BASE_URL}/profiles`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(profile),
+        body: JSON.stringify(profilesPayload),
       })
 
-      if (response.ok) {
-        const result = await response.json()
-        setCurrentProfileId(result.profile.id)
-        alert('Profile created successfully! Finding your perfect matches...')
-        setActiveTab('roommates')
-        await fetchRoommateMatches(profile)
-        await fetchApartmentMatches()
-      } else {
-        const error = await response.json()
-        alert(`Error: ${error.detail || 'Failed to create profile'}`)
+      if (!profilesResp.ok) {
+        const text = await profilesResp.text()
+        console.error('Failed to create profile in Supabase profiles table:', text)
+        alert(`Failed to create profile (profiles table): ${text}`)
+        setLoading(false)
+        return
       }
+
+      const createdProfile = await profilesResp.json()
+      setCurrentProfileId(createdProfile?.id || '')
+
+      // 2) Store preferences for matching and fetch matches
+      const roommateProfileData = {
+        name: profile.name || 'User',
+        email: data.session?.user?.email || '',
+        budget_min: profile.budget_min,
+        budget_max: profile.budget_max,
+        preferred_bedrooms: profile.preferred_bedrooms,
+        cleanliness: profile.cleanliness,
+        noise_level: profile.noise_level,
+        study_time: profile.study_time,
+        social_level: profile.social_level,
+        sleep_schedule: profile.sleep_schedule,
+        pet_friendly: profile.pet_friendly,
+        smoking: profile.smoking,
+        year: profile.year,
+        major: profile.major,
+        max_distance_to_vt: profile.max_distance_to_vt,
+        preferred_amenities: profile.preferred_amenities,
+      }
+
+      const response = await fetch(`${API_BASE_URL}/matching/roommate-preferences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(roommateProfileData),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        alert(`Error: ${errorText || 'Failed to create profile'}`)
+        setLoading(false)
+        return
+      }
+
+      alert('Profile created successfully! Finding your perfect matches...')
+      setActiveTab('roommates')
+      await fetchRoommateMatches(roommateProfileData)
+      await fetchApartmentMatches()
     } catch (error) {
       alert(`Error: ${error}`)
     } finally {
@@ -545,6 +617,8 @@ export default function HokieNest() {
     sleepSchedule: [3],
   })
   const [selectedYear, setSelectedYear] = useState<string>("")
+  const [maxDistanceToVt, setMaxDistanceToVt] = useState<number>(5.0)
+  const [preferredAmenities, setPreferredAmenities] = useState<string[]>([])
   const [roommateMatches, setRoommateMatches] = useState<RoommateMatch[]>([])
 
   const checkUserProfile = async (sessionUser: User | null) => {
@@ -713,7 +787,7 @@ export default function HokieNest() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: {
             prompt: 'select_account',
             access_type: 'offline'
@@ -851,8 +925,8 @@ export default function HokieNest() {
         smoking: false,
         year,
         major,
-        max_distance_to_vt: profile.max_distance_to_vt,
-        preferred_amenities: profile.preferred_amenities
+        max_distance_to_vt: maxDistanceToVt,
+        preferred_amenities: preferredAmenities
       }
 
       let resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/matching/roommate-preferences`, {
@@ -1309,8 +1383,8 @@ export default function HokieNest() {
                   </Label>
                   <div className="space-y-3">
                     <Slider
-                      value={[profile.max_distance_to_vt]}
-                      onValueChange={(value) => setProfile({ ...profile, max_distance_to_vt: value[0] })}
+                      value={[maxDistanceToVt]}
+                      onValueChange={(value) => setMaxDistanceToVt(value[0])}
                       max={10}
                       min={0.5}
                       step={0.5}
@@ -1318,7 +1392,7 @@ export default function HokieNest() {
                     />
                     <div className="flex justify-between text-sm text-muted-foreground mt-2">
                       <span>0.5 miles</span>
-                      <span className="font-medium">{profile.max_distance_to_vt} miles</span>
+                      <span className="font-medium">{maxDistanceToVt} miles</span>
                       <span>10 miles</span>
                     </div>
                   </div>
@@ -1330,20 +1404,14 @@ export default function HokieNest() {
                   <div className="grid grid-cols-2 gap-3">
                     {["Pool", "Fitness Center", "Laundry", "Parking", "Pet Friendly", "WiFi"].map((amenity) => (
                       <div key={amenity} className="flex items-center space-x-3">
-                        <Checkbox 
+                        <Checkbox
                           id={amenity}
-                          checked={profile.preferred_amenities.includes(amenity)}
+                          checked={preferredAmenities.includes(amenity)}
                           onCheckedChange={(checked) => {
                             if (checked) {
-                              setProfile({
-                                ...profile,
-                                preferred_amenities: [...profile.preferred_amenities, amenity]
-                              })
+                              setPreferredAmenities([...preferredAmenities, amenity])
                             } else {
-                              setProfile({
-                                ...profile,
-                                preferred_amenities: profile.preferred_amenities.filter(a => a !== amenity)
-                              })
+                              setPreferredAmenities(preferredAmenities.filter((a: string) => a !== amenity))
                             }
                           }}
                         />
