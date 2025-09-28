@@ -916,10 +916,47 @@ export default function HokieNest() {
   const requestLatestInfoCall = async (propertyId: string) => {
     try {
       setCallingPropertyId(propertyId)
+
+      // Get user profile data
+      const { data } = await supabase.auth.getSession()
+      const profile = await checkUserProfile(data.session?.user ?? null)
+
+      // Find the selected property
+      const selectedProperty = properties.find(p => p.id === propertyId)
+
+      // Prepare user context for the voice agent
+      const userContext = {
+        user_preferences: profile ? {
+          name: profile.name,
+          budget: profile.budget,
+          year: profile.year,
+          major: profile.major,
+          cleanliness: profile.cleanliness,
+          noise_level: profile.noise,
+          study_time: profile.study_time,
+          social_level: profile.social,
+          sleep_schedule: profile.sleep
+        } : null,
+        apartment_info: selectedProperty ? {
+          name: selectedProperty.name,
+          address: selectedProperty.address,
+          price: selectedProperty.price,
+          bedrooms: selectedProperty.bedrooms,
+          distance: selectedProperty.distance,
+          lease_type: selectedProperty.leaseType,
+          pets: selectedProperty.pets,
+          parking: selectedProperty.parking,
+          amenities: selectedProperty.furniture + ', ' + selectedProperty.laundry + ', ' + selectedProperty.utilities
+        } : null
+      }
+
       const resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/voice/call`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to_number: '+16505056094' }),
+        body: JSON.stringify({
+          to_number: '+16505056094',
+          user_context: userContext
+        }),
       })
       if (!resp.ok) {
         const text = await resp.text()
