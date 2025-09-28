@@ -504,6 +504,7 @@ export default function HokieNest() {
   const [selectedProperty, setSelectedProperty] = useState<any>(null)
   const [chatOpen, setChatOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
+  const [authLoading, setAuthLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("roommates")
   
   // Fetch apartment data
@@ -522,12 +523,24 @@ export default function HokieNest() {
       const { data } = await supabase.auth.getSession()
       const token = data.session?.access_token
       if (!token) return null
-      const resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles/me`, {
+      let resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       })
+      if (resp.status === 401) {
+        await supabase.auth.refreshSession()
+        const fresh = await supabase.auth.getSession()
+        const freshToken = fresh.data.session?.access_token
+        if (!freshToken) return null
+        resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles/me`, {
+          headers: {
+            Authorization: `Bearer ${freshToken}`,
+            'Content-Type': 'application/json',
+          },
+        })
+      }
       if (!resp.ok) return null
       const profile = await resp.json()
       if (!profile || (typeof profile === 'object' && Object.keys(profile).length === 0) || !profile.user_id) {
@@ -550,7 +563,7 @@ export default function HokieNest() {
         if (sessionUser) {
           const profile = await checkUserProfile(sessionUser)
           setCurrentView(profile ? "dashboard" : "onboarding")
-        } else {
+          } else {
           setCurrentView("landing")
         }
       }
@@ -561,7 +574,7 @@ export default function HokieNest() {
       if (sessionUser) {
         const profile = await checkUserProfile(sessionUser)
         setCurrentView(profile ? "dashboard" : "onboarding")
-      } else {
+        } else {
         setCurrentView("landing")
       }
     })
@@ -572,12 +585,23 @@ export default function HokieNest() {
   }, [])
 
   const signInWithGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
-      },
-    })
+    try {
+      setAuthLoading(true)
+      const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo, queryParams: { prompt: 'select_account' } },
+      })
+      if (error) throw error
+      if (!data?.url && !redirectTo) {
+        alert('Sign-in started. If no popup opened, allow popups and try again.')
+      }
+    } catch (e: any) {
+      console.error('Google sign-in failed', e)
+      alert(`Sign-in failed: ${e?.message || e}`)
+    } finally {
+      setAuthLoading(false)
+    }
   }
 
   const signOut = async () => {
@@ -625,7 +649,7 @@ export default function HokieNest() {
         sleep: preferences.sleepSchedule[0],
       }
 
-      const resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles`, {
+      let resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -633,6 +657,21 @@ export default function HokieNest() {
         },
         body: JSON.stringify(body),
       })
+      if (resp.status === 401) {
+        await supabase.auth.refreshSession()
+        const fresh = await supabase.auth.getSession()
+        const freshToken = fresh.data.session?.access_token
+        if (freshToken) {
+          resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${freshToken}`,
+            },
+            body: JSON.stringify(body),
+          })
+        }
+      }
 
       if (!resp.ok) {
         const text = await resp.text()
@@ -773,7 +812,7 @@ export default function HokieNest() {
               <div className="space-y-8">
                 <h2 className="text-3xl font-bold tracking-tight">Basic Information</h2>
 
-                <div className="space-y-6">
+                  <div className="space-y-6">
                   <div className="space-y-3">
                     <Label htmlFor="name" className="text-sm font-medium text-foreground">
                       Full Name
