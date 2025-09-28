@@ -85,8 +85,20 @@ def calculate_compatibility(user_prefs: Dict[str, Any], profile: Dict[str, Any])
 # Initialize the Supabase matcher
 matcher = SupabaseRoommateMatcher()
 
-# Database connection
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./bedathon.db")
+# Database connection - use Supabase PostgreSQL if available, otherwise fallback to SQLite
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    # Try to construct Supabase PostgreSQL URL if we have the service role key
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if supabase_url and supabase_service_key:
+        # Extract the project ref from the Supabase URL
+        project_ref = supabase_url.split("//")[1].split(".")[0]
+        # Use the service role key as password for direct PostgreSQL connection
+        DATABASE_URL = f"postgresql://postgres:{supabase_service_key}@db.{project_ref}.supabase.co:5432/postgres"
+    else:
+        DATABASE_URL = "sqlite:///./bedathon.db"
+
 engine = create_engine(DATABASE_URL)
 
 class RoommatePreferencesRequest(BaseModel):
