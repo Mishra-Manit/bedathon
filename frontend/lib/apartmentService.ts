@@ -52,13 +52,15 @@ export class ApartmentService {
       }
     });
 
-    const response = await fetch(`${API_BASE_URL}/apartments?${params.toString()}`);
+    const response = await fetch(`${API_BASE_URL}/matching/apartments?${params.toString()}`);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch apartments: ${response.statusText}`);
     }
     
-    return response.json();
+    const data = await response.json();
+    // Backend returns {apartments: [...], count: 21}, we need just the apartments array
+    return data.apartments || [];
   }
 
   static async getApartment(id: string): Promise<ApartmentComplex> {

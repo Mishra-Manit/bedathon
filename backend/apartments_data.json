@@ -1,0 +1,168 @@
+[
+  {
+    "name": "The Village at Blacksburg",
+    "address": "1600 Patrick Henry Drive, Blacksburg, VA",
+    "studio_price": "$850",
+    "one_bedroom_price": "$950",
+    "two_bedroom_price": "$1200",
+    "three_bedroom_price": "$1500",
+    "four_bedroom_price": null,
+    "five_bedroom_price": null,
+    "distance_to_vt": 3.7,
+    "amenities": [
+      "Pool",
+      "Fitness Center",
+      "Pet Friendly",
+      "Parking",
+      "Laundry"
+    ],
+    "pet_friendly": true,
+    "parking": "Free",
+    "gym": true,
+    "pool": true,
+    "laundry": "On-site",
+    "wifi_included": false,
+    "utilities_included": [
+      "Water",
+      "Sewer",
+      "Trash"
+    ],
+    "bus_stop_nearby": true,
+    "phone": "(540) 552-1234",
+    "website": null,
+    "description": null
+  },
+  {
+    "name": "Apartment Heights",
+    "address": "309 Apartment Heights Dr, Blacksburg, VA",
+    "studio_price": null,
+    "one_bedroom_price": "$1100",
+    "two_bedroom_price": "$1350",
+    "three_bedroom_price": "$1650",
+    "four_bedroom_price": null,
+    "five_bedroom_price": null,
+    "distance_to_vt": 2.4,
+    "amenities": [
+      "Pool",
+      "Fitness Center",
+      "Pet Friendly",
+      "Covered Parking",
+      "Laundry"
+    ],
+    "pet_friendly": true,
+    "parking": "Covered",
+    "gym": true,
+    "pool": true,
+    "laundry": "In-unit",
+    "wifi_included": true,
+    "utilities_included": [
+      "Water",
+      "Sewer",
+      "Trash",
+      "Internet"
+    ],
+    "bus_stop_nearby": true,
+    "phone": "(540) 552-5678",
+    "website": null,
+    "description": null
+  },
+  {
+    "name": "Maple Ridge Townhomes",
+    "address": "344 Red Maple Drive, Blacksburg, VA",
+    "studio_price": null,
+    "one_bedroom_price": null,
+    "two_bedroom_price": "$1200",
+    "three_bedroom_price": "$1450",
+    "four_bedroom_price": "$1800",
+    "five_bedroom_price": null,
+    "distance_to_vt": 4.3,
+    "amenities": [
+      "Pet Friendly",
+      "Parking",
+      "Laundry",
+      "Patio/Balcony"
+    ],
+    "pet_friendly": true,
+    "parking": "Free",
+    "gym": false,
+    "pool": false,
+    "laundry": "In-unit",
+    "wifi_included": false,
+    "utilities_included": [
+      "Water",
+      "Sewer"
+    ],
+    "bus_stop_nearby": false,
+    "phone": "(540) 552-9012",
+    "website": null,
+    "description": null
+  },
+  {
+    "name": "Oak Manor",
+    "address": "456 Oak Street, Blacksburg, VA",
+    "studio_price": null,
+    "one_bedroom_price": "$1050",
+    "two_bedroom_price": "$1300",
+    "three_bedroom_price": "$1600",
+    "four_bedroom_price": null,
+    "five_bedroom_price": null,
+    "distance_to_vt": 4.7,
+    "amenities": [
+      "Pool",
+      "Fitness Center",
+      "Parking",
+      "Laundry",
+      "Clubhouse"
+    ],
+    "pet_friendly": false,
+    "parking": "Free",
+    "gym": true,
+    "pool": true,
+    "laundry": "On-site",
+    "wifi_included": false,
+    "utilities_included": [
+      "Water",
+      "Sewer",
+      "Trash"
+    ],
+    "bus_stop_nearby": false,
+    "phone": "(540) 552-3456",
+    "website": null,
+    "description": null
+  },
+  {
+    "name": "The Orchards",
+    "address": "789 Orchard Lane, Blacksburg, VA",
+    "studio_price": "$900",
+    "one_bedroom_price": "$1000",
+    "two_bedroom_price": "$1250",
+    "three_bedroom_price": "$1550",
+    "four_bedroom_price": null,
+    "five_bedroom_price": null,
+    "distance_to_vt": 4.0,
+    "amenities": [
+      "Pool",
+      "Fitness Center",
+      "Pet Friendly",
+      "Parking",
+      "Laundry",
+      "Business Center"
+    ],
+    "pet_friendly": true,
+    "parking": "Free",
+    "gym": true,
+    "pool": true,
+    "laundry": "On-site",
+    "wifi_included": true,
+    "utilities_included": [
+      "Water",
+      "Sewer",
+      "Trash",
+      "Internet"
+    ],
+    "bus_stop_nearby": true,
+    "phone": "(540) 552-7890",
+    "website": null,
+    "description": null
+  }
+]

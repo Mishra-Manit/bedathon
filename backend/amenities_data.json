@@ -1,0 +1,74 @@
+[
+  {
+    "name": "Kroger",
+    "category": "grocery",
+    "address": "1100 S Main St, Blacksburg, VA",
+    "distance_to_vt": 3.8,
+    "phone": "(540) 552-1111",
+    "website": null,
+    "hours": null
+  },
+  {
+    "name": "Food Lion",
+    "category": "grocery",
+    "address": "1901 S Main St, Blacksburg, VA",
+    "distance_to_vt": 3.9,
+    "phone": "(540) 552-2222",
+    "website": null,
+    "hours": null
+  },
+  {
+    "name": "Planet Fitness",
+    "category": "gym",
+    "address": "1400 S Main St, Blacksburg, VA",
+    "distance_to_vt": 2.8,
+    "phone": "(540) 552-3333",
+    "website": null,
+    "hours": null
+  },
+  {
+    "name": "YMCA",
+    "category": "gym",
+    "address": "1000 N Main St, Blacksburg, VA",
+    "distance_to_vt": 4.1,
+    "phone": "(540) 552-4444",
+    "website": null,
+    "hours": null
+  },
+  {
+    "name": "Regal Cinemas",
+    "category": "entertainment",
+    "address": "1800 S Main St, Blacksburg, VA",
+    "distance_to_vt": 1.7,
+    "phone": "(540) 552-5555",
+    "website": null,
+    "hours": null
+  },
+  {
+    "name": "Blacksburg Library",
+    "category": "library",
+    "address": "200 Miller St, Blacksburg, VA",
+    "distance_to_vt": 1.3,
+    "phone": "(540) 552-6666",
+    "website": null,
+    "hours": null
+  },
+  {
+    "name": "Walmart Supercenter",
+    "category": "shopping",
+    "address": "1900 S Main St, Blacksburg, VA",
+    "distance_to_vt": 1.5,
+    "phone": "(540) 552-7777",
+    "website": null,
+    "hours": null
+  },
+  {
+    "name": "Target",
+    "category": "shopping",
+    "address": "2100 S Main St, Blacksburg, VA",
+    "distance_to_vt": 3.8,
+    "phone": "(540) 552-8888",
+    "website": null,
+    "hours": null
+  }
+]
