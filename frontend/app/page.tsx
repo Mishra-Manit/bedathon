@@ -643,52 +643,8 @@ export default function HokieNest() {
         return 'VERY_HIGH'
       }
 
-      const body = {
-        name,
-        year,
-        major,
-        budget,
-        move_in,
-        tags: [],
-        cleanliness: preferences.cleanliness[0],
-        noise: preferences.noiseLevel[0],
-        study_time: preferences.studyTime[0],
-        social: preferences.socialLevel[0],
-        sleep: preferences.sleepSchedule[0],
-      }
-
-      let resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      })
-      if (resp.status === 401) {
-        await supabase.auth.refreshSession()
-        const fresh = await supabase.auth.getSession()
-        const freshToken = fresh.data.session?.access_token
-        if (freshToken) {
-          resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/profiles`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${freshToken}`,
-            },
-            body: JSON.stringify(body),
-          })
-        }
-      }
-
-      if (!resp.ok) {
-        const text = await resp.text()
-        alert(`Failed to create profile: ${text}`)
-        return
-      }
-
-      // Now find roommate matches using the same data
-      const roommateMatchingData = {
+      // Use the roommate-preferences endpoint which adds to Supabase for matching
+      const roommateProfileData = {
         name,
         email: data.session?.user?.email || '',
         budget_min: budget,
@@ -702,23 +658,51 @@ export default function HokieNest() {
         pet_friendly: false,
         smoking: false,
         year,
-        major,
-        min_compatibility: 0.5
+        major
       }
 
-      // Find roommate matches
-      const matchesResp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/matching/roommate-matches`, {
+      let resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/matching/roommate-preferences`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(roommateMatchingData),
+        body: JSON.stringify(roommateProfileData),
       })
 
-      if (matchesResp.ok) {
-        const matchesData = await matchesResp.json()
-        console.log('Found roommate matches:', matchesData)
-        setRoommateMatches(matchesData.matches || []) // Store the matches
+      if (!resp.ok) {
+        const text = await resp.text()
+        alert(`Failed to create profile: ${text}`)
+        return
+      }
+
+      if (resp.ok) {
+        const profileData = await resp.json()
+        console.log('Profile created in Supabase:', profileData)
+        
+        // Now find roommate matches using the same data
+        const roommateMatchingData = {
+          ...roommateProfileData,
+          min_compatibility: 0.5
+        }
+
+        // Find roommate matches
+        const matchesResp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/matching/roommate-matches`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(roommateMatchingData),
+        })
+
+        if (matchesResp.ok) {
+          const matchesData = await matchesResp.json()
+          console.log('Found roommate matches:', matchesData)
+          setRoommateMatches(matchesData.matches || []) // Store the matches
+        }
+      } else {
+        const text = await resp.text()
+        alert(`Failed to create profile: ${text}`)
+        return
       }
 
       alert('Profile created successfully! Finding your perfect roommate matches...')
