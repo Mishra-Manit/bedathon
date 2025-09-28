@@ -20,7 +20,14 @@ load_dotenv()
 matching_router = APIRouter(prefix="/matching", tags=["matching"])
 
 def calculate_compatibility(user_prefs: Dict[str, Any], profile: Dict[str, Any]) -> float:
-    """Calculate compatibility using statistical distance (lower distance = higher compatibility)"""
+    """Calculate roommate compatibility with tuned weights.
+
+    Factors:
+    - Lifestyle vector distance (50%)
+    - Budget proximity (25%)
+    - Same year (10%)
+    - Same/similar major (15%)
+    """
     import math
     
     # Convert preference strings to numbers (1-5 scale)
@@ -60,7 +67,7 @@ def calculate_compatibility(user_prefs: Dict[str, Any], profile: Dict[str, Any])
     # Convert distance to compatibility score (0-1 scale)
     # Maximum possible distance is sqrt(5 * 4^2) = sqrt(80) ≈ 8.94
     max_distance = math.sqrt(5 * 16)  # sqrt(80) ≈ 8.94
-    base_compatibility = max(0.05, 1.0 - (distance / max_distance))
+    base_compatibility = max(0.0, 1.0 - (distance / max_distance))
     
     # Add budget compatibility bonus (handle None values)
     budget_min = user_prefs.get("budget_min") or 800
@@ -68,36 +75,39 @@ def calculate_compatibility(user_prefs: Dict[str, Any], profile: Dict[str, Any])
     user_budget_avg = (budget_min + budget_max) / 2
     profile_budget = profile["budget"]
     budget_diff = abs(user_budget_avg - profile_budget)
-    budget_bonus = max(0, 0.15 - budget_diff / 1000.0)  # Up to 15% bonus for budget match
+    # Normalize: full at <=$100 diff, down to 0 at $600 diff
+    if budget_diff <= 100:
+        budget_bonus = 1.0
+    elif budget_diff >= 600:
+        budget_bonus = 0.0
+    else:
+        budget_bonus = max(0.0, 1.0 - (budget_diff - 100) / 500.0)
     
     # Add categorical bonuses (handle None values)
     user_year = (user_prefs.get("year") or "Junior").lower()
     user_major = (user_prefs.get("major") or "Computer Science").lower()
-    year_bonus = 0.1 if user_year == profile["year"].lower() else 0
-    major_bonus = 0.15 if user_major == profile["major"].lower() else 0
+    year_bonus = 1.0 if user_year == profile["year"].lower() else 0.0
+    # Treat similar majors as partial match
+    profile_major = (profile["major"] or "").lower()
+    major_bonus = 1.0 if user_major == profile_major else (0.5 if (user_major in profile_major or profile_major in user_major) and user_major and profile_major else 0.0)
     
-    final_score = base_compatibility + budget_bonus + year_bonus + major_bonus
+    # Combine with weights
+    final_score = (
+        base_compatibility * 0.5 +
+        budget_bonus * 0.25 +
+        year_bonus * 0.10 +
+        major_bonus * 0.15
+    )
     
     print(f"🔍 STATS: {profile['name']} - Distance: {distance:.2f}, Base: {base_compatibility:.2f}, Budget: +{budget_bonus:.2f}, Year: +{year_bonus:.2f}, Major: +{major_bonus:.2f} = {final_score:.2f}")
     
-    return max(0.05, min(1.0, final_score))
+    return max(0.0, min(1.0, final_score))
 
 # Initialize the Supabase matcher
 matcher = SupabaseRoommateMatcher()
 
-# Database connection - use Supabase PostgreSQL if available, otherwise fallback to SQLite
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    # Try to construct Supabase PostgreSQL URL if we have the service role key
-    supabase_url = os.getenv("SUPABASE_URL")
-    supabase_service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-    if supabase_url and supabase_service_key:
-        # Extract the project ref from the Supabase URL
-        project_ref = supabase_url.split("//")[1].split(".")[0]
-        # Use the service role key as password for direct PostgreSQL connection
-        DATABASE_URL = f"postgresql://postgres:{supabase_service_key}@db.{project_ref}.supabase.co:5432/postgres"
-    else:
-        DATABASE_URL = "sqlite:///./bedathon.db"
+# Database connection - use SQLite for now to avoid Supabase connection issues
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./bedathon.db")
 
 engine = create_engine(DATABASE_URL)
 

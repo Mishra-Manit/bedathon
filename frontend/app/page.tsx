@@ -767,17 +767,49 @@ export default function HokieNest() {
         const matchesData = await matchesResp.json()
         setRoommateMatches(matchesData.matches || [])
       }
+
+      // Also fetch apartment matches for the profile
+      // Use current UI selections to avoid overwriting with defaults
+      const apartmentMatchingData = {
+        name: profile.name,
+        email: data.session?.user?.email || '',
+        budget_min: profile.budget,
+        budget_max: profile.budget + 200,
+        preferred_bedrooms: preferredBedrooms || profile.preferred_bedrooms || 2,
+        cleanliness: intToPreference(profile.cleanliness),
+        noise_level: intToPreference(profile.noise),
+        study_time: intToPreference(profile.study_time),
+        social_level: intToPreference(profile.social),
+        sleep_schedule: intToPreference(profile.sleep),
+        pet_friendly: false,
+        smoking: false,
+        year: profile.year,
+        major: profile.major || 'Undeclared',
+        max_distance_to_vt: maxDistanceToVt || profile.max_distance_to_vt || 5.0,
+        preferred_amenities: preferredAmenities?.length ? preferredAmenities : (profile.preferred_amenities || [])
+      }
+
+      const apartmentMatchesResp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/matching/apartment-matches-for-preferences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(apartmentMatchingData),
+      })
+
+      if (apartmentMatchesResp.ok) {
+        const apartmentMatchesData = await apartmentMatchesResp.json()
+        setApartmentMatches(apartmentMatchesData.matches || [])
+      }
     } catch (e) {
       console.error('Failed to refresh roommate matches from profile', e)
     }
   }
 
-  // Auto-refresh matches whenever user lands on dashboard
+  // Auto-refresh matches whenever user lands on dashboard (but not while viewing Apartment Matches)
   useEffect(() => {
-    if (currentView === 'dashboard' && user) {
+    if (currentView === 'dashboard' && user && activeTab !== 'matches') {
       refreshMatchesFromProfile()
     }
-  }, [currentView, user])
+  }, [currentView, user, activeTab])
 
   const signInWithGoogle = async () => {
     if (authLoading) return // Prevent multiple simultaneous sign-in attempts
@@ -976,14 +1008,35 @@ export default function HokieNest() {
           console.log('Found roommate matches:', matchesData)
           setRoommateMatches(matchesData.matches || []) // Store the matches
         }
+
+        // Also find apartment matches
+        const apartmentMatchingData = {
+          ...roommateProfileData,
+          max_distance_to_vt: maxDistanceToVt,
+          preferred_amenities: preferredAmenities
+        }
+
+        const apartmentMatchesResp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/matching/apartment-matches-for-preferences`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(apartmentMatchingData),
+        })
+
+        if (apartmentMatchesResp.ok) {
+          const apartmentMatchesData = await apartmentMatchesResp.json()
+          console.log('Found apartment matches:', apartmentMatchesData)
+          setApartmentMatches(apartmentMatchesData.matches || []) // Store the apartment matches
+        }
       } else {
         const text = await resp.text()
         alert(`Failed to create profile: ${text}`)
         return
       }
 
-      alert('Profile created successfully! Finding your perfect roommate matches...')
-      setActiveTab('roommates') // Set to roommates tab
+      alert('Profile created successfully! Finding your perfect roommate and apartment matches...')
+      setActiveTab('matches') // Set to apartment matches tab
       setCurrentView('dashboard')
     } catch (e) {
       console.error('createProfile failed', e)
@@ -1525,7 +1578,7 @@ export default function HokieNest() {
               Browse Housing
             </TabsTrigger>
             <TabsTrigger value="matches" className="font-medium">
-              My Matches
+              Apartment Matches
             </TabsTrigger>
           </TabsList>
 
@@ -1646,93 +1699,6 @@ export default function HokieNest() {
               </div>
             )}
 
-            {/* Apartment Matches Section */}
-            {apartmentMatches.length > 0 && (
-              <div className="mt-16 pt-12 border-t border-border/50">
-                <div className="flex justify-between items-center mb-8">
-                  <div>
-                    <h3 className="text-2xl font-bold mb-2">Your Apartment Matches</h3>
-                    <p className="text-muted-foreground">
-                      Found {apartmentMatches.length} apartment{apartmentMatches.length === 1 ? '' : 's'} that match your preferences
-                    </p>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setApartmentMatches([])}
-                  >
-                    Clear Results
-                  </Button>
-                </div>
-
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {apartmentMatches.map((match, index) => (
-                    <Card key={index} className="p-6 card-hover border-border/50">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-bold text-lg">{match.apartment_name}</h4>
-                            <p className="text-sm text-muted-foreground">{match.apartment_address}</p>
-                          </div>
-                          <Badge 
-                            variant={match.match_percentage >= 70 ? "default" : match.match_percentage >= 50 ? "secondary" : "destructive"}
-                            className="text-xs"
-                          >
-                            {match.match_percentage}% match
-                          </Badge>
-                        </div>
-
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Price:</span>
-                            <span className="font-medium">{match.price}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Bedrooms:</span>
-                            <span className="font-medium">{match.bedroom_count}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Distance to VT:</span>
-                            <span className="font-medium">{match.distance_to_vt} miles</span>
-                          </div>
-                          {match.amenities && match.amenities.length > 0 && (
-                            <div>
-                              <span className="text-muted-foreground">Amenities:</span>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {match.amenities.slice(0, 3).map((amenity, i) => (
-                                  <Badge key={i} variant="outline" className="text-xs">
-                                    {amenity}
-                                  </Badge>
-                                ))}
-                                {match.amenities.length > 3 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    +{match.amenities.length - 3} more
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {match.reasons && match.reasons.length > 0 && (
-                          <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground font-medium">Why it matches:</p>
-                            {match.reasons.slice(0, 2).map((reason, i) => (
-                              <p key={i} className="text-xs text-muted-foreground">• {reason}</p>
-                            ))}
-                          </div>
-                        )}
-
-                        <Button className="w-full gap-2">
-                          <ExternalLink className="h-4 w-4" />
-                          View Details
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
           </TabsContent>
 
           <TabsContent value="housing" className="mt-12">
@@ -1955,39 +1921,114 @@ export default function HokieNest() {
 
 
           <TabsContent value="matches" className="mt-12">
-            <div className="space-y-12">
-              <div>
-                <h2 className="text-3xl font-bold mb-8 tracking-tight">Your Connections</h2>
+            <div className="space-y-8">
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h2 className="text-3xl font-bold mb-2">Your Apartment Matches</h2>
+                  <p className="text-muted-foreground">
+                    {apartmentMatches.length > 0 
+                      ? `Found ${apartmentMatches.length} apartment${apartmentMatches.length === 1 ? '' : 's'} that match your preferences`
+                      : "No apartment matches yet - complete your profile to see recommendations"
+                    }
+                  </p>
+                </div>
+                {apartmentMatches.length > 0 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setApartmentMatches([])}
+                  >
+                    Clear Results
+                  </Button>
+                )}
+              </div>
+
+              {apartmentMatches.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="mb-8">
+                    <Home className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">No apartment matches yet</h3>
+                    <p className="text-muted-foreground mb-6">
+                      Complete your profile through the onboarding process to find apartments that match your preferences!
+                    </p>
+                    <Button 
+                      size="lg" 
+                      className="gap-2"
+                      onClick={() => setActiveTab("roommates")}
+                    >
+                      <Home className="h-5 w-5" />
+                      Find Apartments
+                    </Button>
+                  </div>
+                </div>
+              ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {roommates.slice(0, 2).map((roommate) => (
-                    <Card key={roommate.id} className="p-6 card-hover border-border/50">
-                      <div className="flex items-center gap-4">
-                        <img
-                          src={roommate.photo || "/placeholder.svg"}
-                          alt={roommate.name}
-                          className="w-16 h-16 rounded-full object-cover border-2 border-border/20"
-                        />
-                        <div>
-                          <h3 className="font-bold text-lg">{roommate.name}</h3>
-                          <p className="text-sm text-muted-foreground">{roommate.major}</p>
+                  {apartmentMatches.map((apartment, index) => (
+                    <Card key={index} className="p-6 card-hover border-border/50">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-bold text-lg">{apartment.apartment_name}</h4>
+                            <p className="text-sm text-muted-foreground">{apartment.apartment_address}</p>
+                          </div>
+                          <Badge 
+                            variant={apartment.match_percentage >= 70 ? "default" : apartment.match_percentage >= 50 ? "secondary" : "destructive"}
+                            className="text-xs"
+                          >
+                            {apartment.match_percentage}% match
+                          </Badge>
                         </div>
+
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Price:</span>
+                            <span className="font-medium">{apartment.price}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Bedrooms:</span>
+                            <span className="font-medium">{apartment.bedroom_count}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Distance to VT:</span>
+                            <span className="font-medium">{apartment.distance_to_vt} miles</span>
+                          </div>
+                          {apartment.amenities && apartment.amenities.length > 0 && (
+                            <div>
+                              <span className="text-muted-foreground">Amenities:</span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {apartment.amenities.slice(0, 3).map((amenity: string, i: number) => (
+                                  <Badge key={i} variant="outline" className="text-xs">
+                                    {amenity}
+                                  </Badge>
+                                ))}
+                                {apartment.amenities.length > 3 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{apartment.amenities.length - 3} more
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {apartment.reasons && apartment.reasons.length > 0 && (
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground font-medium">Why it matches:</p>
+                            {apartment.reasons.slice(0, 2).map((reason: string, i: number) => (
+                              <p key={i} className="text-xs text-muted-foreground">• {reason}</p>
+                            ))}
+                          </div>
+                        )}
+
+                        <Button className="w-full gap-2">
+                          <ExternalLink className="h-4 w-4" />
+                          View Details
+                        </Button>
                       </div>
                     </Card>
                   ))}
                 </div>
-              </div>
-
-              <div>
-                <h2 className="text-3xl font-bold mb-8 tracking-tight">Form a Group</h2>
-                <Card className="p-8 card-hover border-border/50">
-                  <p className="text-muted-foreground mb-6 text-lg leading-relaxed">
-                    Drag profiles together to form a roommate group and find housing together.
-                  </p>
-                  <Button className="w-full h-12 font-medium" disabled>
-                    Find Housing for Group
-                  </Button>
-                </Card>
-              </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>

@@ -14,19 +14,8 @@ load_dotenv()
 def import_apartments():
     """Import apartments from JSON file to database"""
     
-    # Use Supabase PostgreSQL if available, otherwise fallback to SQLite
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    if not DATABASE_URL:
-        # Try to construct Supabase PostgreSQL URL if we have the service role key
-        supabase_url = os.getenv("SUPABASE_URL")
-        supabase_service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-        if supabase_url and supabase_service_key:
-            # Extract the project ref from the Supabase URL
-            project_ref = supabase_url.split("//")[1].split(".")[0]
-            # Use the service role key as password for direct PostgreSQL connection
-            DATABASE_URL = f"postgresql://postgres:{supabase_service_key}@db.{project_ref}.supabase.co:5432/postgres"
-        else:
-            DATABASE_URL = "sqlite:///./bedathon.db"
+    # Use SQLite for now to avoid Supabase connection issues
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./bedathon.db")
     
     print(f"🔧 Using database: {DATABASE_URL.split('@')[0] if '@' in DATABASE_URL else DATABASE_URL}")
     
