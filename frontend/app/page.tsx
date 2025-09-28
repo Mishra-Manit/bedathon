@@ -4,17 +4,18 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import type { User } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { ExternalLink } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { Heart, X, MapPin, Star, Moon, Sun, Loader2, Phone, CheckCircle, XCircle, AlertCircle, Home, ExternalLink } from "lucide-react"
+import { Heart, X, MapPin, Star, Moon, Sun, Loader2, Phone, CheckCircle, XCircle, AlertCircle, Home } from "lucide-react"
 import { useApartments } from "@/lib/useApartments"
 import { formatApartmentForDisplay } from "@/lib/apartmentService"
 
@@ -196,7 +197,7 @@ function RoommateMatchingInterface() {
       alert('Profile created successfully! Finding your perfect matches...')
       setActiveTab('roommates')
       await fetchRoommateMatches(roommateProfileData)
-      await fetchApartmentMatches()
+      await fetchApartmentMatches(roommateProfileData)
     } catch (error) {
       alert(`Error: ${error}`)
     } finally {
@@ -233,28 +234,62 @@ function RoommateMatchingInterface() {
     }
   }
 
-  const fetchApartmentMatches = async () => {
+  const fetchApartmentMatches = async (profileData?: any) => {
+    console.log('fetchApartmentMatches called')
     try {
-      // Create a complete profile object with all preferences for apartment matching
-      const apartmentProfileData = {
-        name: profile.name || 'User',
-        email: profile.email || '',
-        budget_min: profile.budget_min,
-        budget_max: profile.budget_max,
-        preferred_bedrooms: profile.preferred_bedrooms,
-        cleanliness: profile.cleanliness,
-        noise_level: profile.noise_level,
-        study_time: profile.study_time,
-        social_level: profile.social_level,
-        sleep_schedule: profile.sleep_schedule,
-        pet_friendly: profile.pet_friendly,
-        smoking: profile.smoking,
-        year: profile.year,
-        major: profile.major,
-        max_distance_to_vt: profile.max_distance_to_vt,
-        preferred_amenities: profile.preferred_amenities
+      // Use the profile data passed in, or get from form elements as fallback
+      let apartmentProfileData
+      
+      if (profileData) {
+        // Use the profile data from the parameter
+        apartmentProfileData = {
+          name: profileData.name,
+          email: profileData.email,
+          budget_min: profileData.budget_min,
+          budget_max: profileData.budget_max,
+          preferred_bedrooms: profileData.preferred_bedrooms,
+          cleanliness: profileData.cleanliness,
+          noise_level: profileData.noise_level,
+          study_time: profileData.study_time,
+          social_level: profileData.social_level,
+          sleep_schedule: profileData.sleep_schedule,
+          pet_friendly: profileData.pet_friendly,
+          smoking: profileData.smoking,
+          year: profileData.year,
+          major: profileData.major,
+          max_distance_to_vt: 5.0,
+          preferred_amenities: []
+        }
+      } else {
+        // Fallback: get form data directly from the DOM elements
+        const name = (document.getElementById('name') as HTMLInputElement | null)?.value?.trim() || 'User'
+        const year = (document.getElementById('year') as HTMLSelectElement | null)?.value || 'Junior'
+        const major = (document.getElementById('major') as HTMLInputElement | null)?.value?.trim() || 'Computer Science'
+        const budgetStr = (document.getElementById('budget') as HTMLInputElement | null)?.value || '1000'
+        const budget = Number(String(budgetStr).replace(/[^0-9]/g, '')) || 1000
+
+        apartmentProfileData = {
+          name,
+          email: '', // Will be set from session
+          budget_min: budget,
+          budget_max: budget + 200,
+          preferred_bedrooms: 2, // Default to 2 bedrooms
+          cleanliness: 'MEDIUM',
+          noise_level: 'MEDIUM',
+          study_time: 'MEDIUM',
+          social_level: 'MEDIUM',
+          sleep_schedule: 'MEDIUM',
+          pet_friendly: false,
+          smoking: false,
+          year,
+          major,
+          max_distance_to_vt: 5.0,
+          preferred_amenities: []
+        }
       }
 
+      console.log('Sending apartment matching request:', apartmentProfileData)
+      
       // Use the new apartment matching endpoint that works with user preferences
       const response = await fetch(`${API_BASE_URL}/matching/apartment-matches-for-preferences`, {
         method: 'POST',
@@ -266,7 +301,10 @@ function RoommateMatchingInterface() {
 
       if (response.ok) {
         const data = await response.json()
+        console.log('Apartment matches received:', data.matches)
         setApartmentMatches(data.matches)
+      } else {
+        console.error('Failed to fetch apartment matches:', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Error fetching apartment matches:', error)
@@ -581,7 +619,7 @@ function RoommateMatchingInterface() {
                     <div className="mt-4">
                       <h5 className="font-medium mb-1">Reasons for Match:</h5>
                       <ul className="list-disc list-inside text-xs text-gray-600">
-                        {apartment.reasons.map((reason, index) => (
+                        {apartment.reasons.map((reason: string, index: number) => (
                           <li key={index}>{reason}</li>
                         ))}
                       </ul>
@@ -976,13 +1014,47 @@ export default function HokieNest() {
           console.log('Found roommate matches:', matchesData)
           setRoommateMatches(matchesData.matches || []) // Store the matches
         }
+
+        // Also find apartment matches using the same data
+        const apartmentProfileData = {
+          name,
+          email: data.session?.user?.email || '',
+          budget_min: budget,
+          budget_max: budget + 200,
+          preferred_bedrooms: preferredBedrooms,
+          cleanliness: convertPreference(preferences.cleanliness[0]),
+          noise_level: convertPreference(preferences.noiseLevel[0]),
+          study_time: convertPreference(preferences.studyTime[0]),
+          social_level: convertPreference(preferences.socialLevel[0]),
+          sleep_schedule: convertPreference(preferences.sleepSchedule[0]),
+          pet_friendly: false,
+          smoking: false,
+          year,
+          major,
+          max_distance_to_vt: maxDistanceToVt,
+          preferred_amenities: preferredAmenities
+        }
+
+        const apartmentResp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/matching/apartment-matches-for-preferences`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(apartmentProfileData),
+        })
+
+        if (apartmentResp.ok) {
+          const apartmentData = await apartmentResp.json()
+          console.log('Found apartment matches:', apartmentData)
+          setApartmentMatches(apartmentData.matches || []) // Store the apartment matches
+        }
       } else {
         const text = await resp.text()
         alert(`Failed to create profile: ${text}`)
         return
       }
 
-      alert('Profile created successfully! Finding your perfect roommate matches...')
+      alert('Profile created successfully! Finding your perfect roommate and apartment matches...')
       setActiveTab('roommates') // Set to roommates tab
       setCurrentView('dashboard')
     } catch (e) {
@@ -1095,8 +1167,36 @@ export default function HokieNest() {
     ;(async () => {
       try {
         const profile = await checkUserProfile(user)
-        if (!profile?.id) return
-        const resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/matching/apartment-matches/${profile.id}?limit=100`)
+        if (!profile) return
+
+        // Use the apartment-matches-for-preferences endpoint instead
+        const apartmentProfileData = {
+          name: profile.name || 'User',
+          email: user.email || '',
+          budget_min: profile.budget || 1000,
+          budget_max: (profile.budget || 1000) + 200,
+          preferred_bedrooms: profile.preferred_bedrooms || 2,
+          cleanliness: intToPreference(profile.cleanliness),
+          noise_level: intToPreference(profile.noise),
+          study_time: intToPreference(profile.study_time),
+          social_level: intToPreference(profile.social),
+          sleep_schedule: intToPreference(profile.sleep),
+          pet_friendly: false,
+          smoking: false,
+          year: profile.year || 'Junior',
+          major: profile.major || 'Computer Science',
+          max_distance_to_vt: 5.0,
+          preferred_amenities: []
+        }
+
+        const resp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/matching/apartment-matches-for-preferences`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(apartmentProfileData),
+        })
+        
         if (!resp.ok) return
         const data = await resp.json()
         const map: Record<string, { match_percentage: number; reasons: string[] }> = {}
@@ -1517,17 +1617,17 @@ export default function HokieNest() {
 
       <main className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 h-12 p-1 bg-muted/50">
-            <TabsTrigger value="roommates" className="font-medium">
-              Find Roommates
-            </TabsTrigger>
-            <TabsTrigger value="housing" className="font-medium">
-              Browse Housing
-            </TabsTrigger>
-            <TabsTrigger value="matches" className="font-medium">
-              My Matches
-            </TabsTrigger>
-          </TabsList>
+        <TabsList className="grid w-full grid-cols-3 h-12 p-1 bg-muted/50">
+          <TabsTrigger value="roommates" className="font-medium">
+            Find Roommates
+          </TabsTrigger>
+          <TabsTrigger value="housing" className="font-medium">
+            Browse Housing
+          </TabsTrigger>
+          <TabsTrigger value="apartments" className="font-medium">
+            Apartment Matches
+          </TabsTrigger>
+        </TabsList>
 
           <TabsContent value="roommates" className="mt-12">
             <div className="flex justify-between items-center mb-8">
@@ -1699,7 +1799,7 @@ export default function HokieNest() {
                             <div>
                               <span className="text-muted-foreground">Amenities:</span>
                               <div className="flex flex-wrap gap-1 mt-1">
-                                {match.amenities.slice(0, 3).map((amenity, i) => (
+                                {match.amenities.slice(0, 3).map((amenity: string, i: number) => (
                                   <Badge key={i} variant="outline" className="text-xs">
                                     {amenity}
                                   </Badge>
@@ -1717,7 +1817,7 @@ export default function HokieNest() {
                         {match.reasons && match.reasons.length > 0 && (
                           <div className="space-y-1">
                             <p className="text-xs text-muted-foreground font-medium">Why it matches:</p>
-                            {match.reasons.slice(0, 2).map((reason, i) => (
+                            {match.reasons.slice(0, 2).map((reason: string, i: number) => (
                               <p key={i} className="text-xs text-muted-foreground">• {reason}</p>
                             ))}
                           </div>
@@ -1954,41 +2054,88 @@ export default function HokieNest() {
           </TabsContent>
 
 
-          <TabsContent value="matches" className="mt-12">
-            <div className="space-y-12">
-              <div>
-                <h2 className="text-3xl font-bold mb-8 tracking-tight">Your Connections</h2>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {roommates.slice(0, 2).map((roommate) => (
-                    <Card key={roommate.id} className="p-6 card-hover border-border/50">
-                      <div className="flex items-center gap-4">
-                        <img
-                          src={roommate.photo || "/placeholder.svg"}
-                          alt={roommate.name}
-                          className="w-16 h-16 rounded-full object-cover border-2 border-border/20"
-                        />
-                        <div>
-                          <h3 className="font-bold text-lg">{roommate.name}</h3>
-                          <p className="text-sm text-muted-foreground">{roommate.major}</p>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-3xl font-bold mb-8 tracking-tight">Form a Group</h2>
-                <Card className="p-8 card-hover border-border/50">
-                  <p className="text-muted-foreground mb-6 text-lg leading-relaxed">
-                    Drag profiles together to form a roommate group and find housing together.
-                  </p>
-                  <Button className="w-full h-12 font-medium" disabled>
-                    Find Housing for Group
-                  </Button>
-                </Card>
-              </div>
+          <TabsContent value="apartments" className="mt-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Apartment Matches</h2>
+              {apartmentMatches.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setApartmentMatches([])
+                  }}
+                >
+                  Clear Results
+                </Button>
+              )}
             </div>
+            {apartmentMatches.length === 0 ? (
+              <p className="text-gray-500">No apartment matches found yet. Create your profile to see recommendations!</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {apartmentMatches.map((apartment) => (
+                  <Card key={apartment.apartment_name}>
+                    <CardHeader>
+                      <CardTitle className="text-lg">{apartment.apartment_name}</CardTitle>
+                      <CardDescription>{apartment.apartment_address}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Price:</span>
+                          <span className="font-medium">{apartment.price}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Bedrooms:</span>
+                          <span className="font-medium">{apartment.bedroom_count}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Distance to VT:</span>
+                          <span className="font-medium">{apartment.distance_to_vt} miles</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Match Score:</span>
+                          <Badge variant={apartment.match_percentage >= 70 ? "default" : apartment.match_percentage >= 50 ? "secondary" : "destructive"}>
+                            {apartment.match_percentage}%
+                          </Badge>
+                        </div>
+                        {apartment.amenities && apartment.amenities.length > 0 && (
+                          <div>
+                            <span className="text-sm text-muted-foreground">Amenities:</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {apartment.amenities.slice(0, 3).map((amenity: string, i: number) => (
+                                <Badge key={i} variant="outline" className="text-xs">
+                                  {amenity}
+                                </Badge>
+                              ))}
+                              {apartment.amenities.length > 3 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{apartment.amenities.length - 3} more
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {apartment.reasons && apartment.reasons.length > 0 && (
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground font-medium">Why it matches:</p>
+                            {apartment.reasons.slice(0, 2).map((reason: string, i: number) => (
+                              <p key={i} className="text-xs text-muted-foreground">• {reason}</p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <Button className="w-full">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>
