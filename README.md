@@ -2,7 +2,7 @@
 
 **Roommates and Housing Matching for Virginia Tech**
 
-HokieNest helps VT students find compatible roommates and discover apartments that fit their preferences (budget, bedrooms, distance, amenities). It combines a modern **Next.js frontend** with a **FastAPI backend**, **Supabase integration**, and a local **SQLite fallback** for development.
+Bed-A-Thon helps VT students find compatible roommates and discover apartments that fit their preferences (budget, bedrooms, distance, amenities). It combines a modern **Next.js frontend** with a **FastAPI backend**, **Supabase integration**, and a local **SQLite fallback** for development.
 
 ---
 
