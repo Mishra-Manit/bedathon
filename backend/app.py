@@ -15,6 +15,7 @@ from supabase_utils import (
     profiles_update_by_user_id,
 )
 from supabase_matching_fastapi import matching_router
+from voiceagent.router import router as voice_router
 
 load_dotenv()
 
@@ -30,6 +31,7 @@ app.add_middleware(
 
 # Include matching router
 app.include_router(matching_router)
+app.include_router(voice_router)
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 agent = ClaudeAgent(client)
@@ -116,7 +118,7 @@ async def clear_agent_history():
 @app.post("/profiles", response_model=ProfileRead)
 async def create_profile(profile_data: ProfileCreate, user=Depends(get_current_user)):
     try:
-        existing = profiles_select_by_user_id(user.id)
+        existing = profiles_select_by_user_id(user.id, token=getattr(user, "token", None))
         if existing:
             return ProfileRead(**existing[0])
 
@@ -125,7 +127,7 @@ async def create_profile(profile_data: ProfileCreate, user=Depends(get_current_u
             profile_dict["move_in"] = profile_dict["move_in"].isoformat()
         profile_dict["user_id"] = user.id
 
-        created = profiles_insert(profile_dict)
+        created = profiles_insert(profile_dict, token=getattr(user, "token", None))
         if created:
             return ProfileRead(**created[0])
         raise HTTPException(status_code=400, detail="Insert returned no data")
@@ -138,7 +140,7 @@ async def create_profile(profile_data: ProfileCreate, user=Depends(get_current_u
 @app.get("/profiles/me", response_model=Optional[ProfileRead])
 async def get_my_profile(user=Depends(get_current_user)):
     try:
-        existing = profiles_select_by_user_id(user.id)
+        existing = profiles_select_by_user_id(user.id, token=getattr(user, "token", None))
         return ProfileRead(**existing[0]) if existing else None
     except HTTPException:
         raise
@@ -152,7 +154,7 @@ async def update_my_profile(profile_data: ProfileCreate, user=Depends(get_curren
         profile_dict = profile_data.dict()
         if profile_dict.get("move_in") is not None:
             profile_dict["move_in"] = profile_dict["move_in"].isoformat()
-        updated = profiles_update_by_user_id(user.id, profile_dict)
+        updated = profiles_update_by_user_id(user.id, profile_dict, token=getattr(user, "token", None))
         if updated:
             return ProfileRead(**updated[0])
         existing = profiles_select_by_user_id(user.id)
