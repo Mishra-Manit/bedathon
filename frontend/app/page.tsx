@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { Heart, X, MapPin, Star, Moon, Sun, Loader2, Phone, CheckCircle, XCircle, AlertCircle, Home } from "lucide-react"
+import { Heart, X, MapPin, Star, Moon, Sun, Loader2, Phone, CheckCircle, XCircle, AlertCircle, Home, ExternalLink } from "lucide-react"
 import { useApartments } from "@/lib/useApartments"
 import { formatApartmentForDisplay } from "@/lib/apartmentService"
 
@@ -1438,7 +1438,14 @@ export default function HokieNest() {
                       </div>
 
                       <div className="flex gap-3">
-                        <Button variant="outline" className="flex-1 gap-2 h-11 font-medium">
+                        <Button
+                          className="flex-1 gap-2 h-11 font-medium"
+                          onClick={() => window.open('https://instagram.com', '_blank')}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Contact
+                        </Button>
+                        <Button variant="outline" className="gap-2 h-11 font-medium">
                           <Heart className="h-4 w-4" />
                           Like
                         </Button>
