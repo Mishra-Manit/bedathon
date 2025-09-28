@@ -52,17 +52,24 @@ async def get_current_user(authorization: Optional[str] = Header(default=None)):
     if resp.status_code != 200:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
     data = resp.json()
-    # Return an object with attribute access similar to supabase-py user
-    return SimpleNamespace(**data)
+    # Return an object with attribute access similar to supabase-py user,
+    # while also attaching the raw JWT for RLS-enabled PostgREST operations
+    user_obj = SimpleNamespace(**data)
+    setattr(user_obj, "token", token)
+    return user_obj
 
 
-def profiles_select_by_user_id(user_id: str) -> List[Dict[str, Any]]:
-    """Return profile rows for a user_id using PostgREST."""
+def profiles_select_by_user_id(user_id: str, token: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Return profile rows for a user_id using PostgREST.
+
+    When RLS is enabled and only the anon key is available, pass the user's JWT
+    as the Bearer token so policies can evaluate auth.uid().
+    """
     cfg = get_supabase_config()
     url = f"{cfg['url']}/rest/v1/profiles?user_id=eq.{user_id}"
     headers = {
         "apikey": cfg["api_key"],
-        "Authorization": f"Bearer {cfg['api_key']}",
+        "Authorization": f"Bearer {token or cfg['api_key']}",
         "Accept": "application/json",
     }
     resp = httpx.get(url, headers=headers, timeout=12)
@@ -70,13 +77,17 @@ def profiles_select_by_user_id(user_id: str) -> List[Dict[str, Any]]:
     return resp.json() or []
 
 
-def profiles_insert(profile: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Insert a profile row via PostgREST and return inserted rows."""
+def profiles_insert(profile: Dict[str, Any], token: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Insert a profile row via PostgREST and return inserted rows.
+
+    When RLS is enabled and only the anon key is available, pass the user's JWT
+    as the Bearer token so policies can evaluate auth.uid().
+    """
     cfg = get_supabase_config()
     url = f"{cfg['url']}/rest/v1/profiles"
     headers = {
         "apikey": cfg["api_key"],
-        "Authorization": f"Bearer {cfg['api_key']}",
+        "Authorization": f"Bearer {token or cfg['api_key']}",
         "Content-Type": "application/json",
         "Prefer": "return=representation",
     }
@@ -85,13 +96,17 @@ def profiles_insert(profile: Dict[str, Any]) -> List[Dict[str, Any]]:
     return resp.json() if resp.content else []
 
 
-def profiles_update_by_user_id(user_id: str, updates: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Update profile(s) by user_id via PostgREST and return rows."""
+def profiles_update_by_user_id(user_id: str, updates: Dict[str, Any], token: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Update profile(s) by user_id via PostgREST and return rows.
+
+    When RLS is enabled and only the anon key is available, pass the user's JWT
+    as the Bearer token so policies can evaluate auth.uid().
+    """
     cfg = get_supabase_config()
     url = f"{cfg['url']}/rest/v1/profiles?user_id=eq.{user_id}"
     headers = {
         "apikey": cfg["api_key"],
-        "Authorization": f"Bearer {cfg['api_key']}",
+        "Authorization": f"Bearer {token or cfg['api_key']}",
         "Content-Type": "application/json",
         "Prefer": "return=representation",
     }
