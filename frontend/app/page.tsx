@@ -561,7 +561,7 @@ function RoommateMatchingInterface() {
           {apartmentMatches.length === 0 ? (
             <p className="text-gray-500">No apartment matches found yet. Create your profile to see recommendations!</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {apartmentMatches.map((apartment) => (
                 <Card key={apartment.apartment_name}>
                   <CardHeader>
@@ -572,14 +572,14 @@ function RoommateMatchingInterface() {
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
+                  <CardContent className="space-y-3 text-sm">
                     <p><strong>Address:</strong> {apartment.apartment_address}</p>
                     <p><strong>Price:</strong> {apartment.price}</p>
                     <p><strong>Bedrooms:</strong> {apartment.bedroom_count}</p>
                     <p><strong>Distance to VT:</strong> {apartment.distance_to_vt} miles</p>
                     <p><strong>Amenities:</strong> {apartment.amenities.join(', ') || 'None'}</p>
-                    <div className="mt-4">
-                      <h5 className="font-medium mb-1">Reasons for Match:</h5>
+                    <div className="mt-5">
+                      <h5 className="font-medium mb-2">Reasons for Match:</h5>
                       <ul className="list-disc list-inside text-xs text-gray-600">
                         {apartment.reasons.map((reason, index) => (
                           <li key={index}>{reason}</li>
@@ -597,7 +597,7 @@ function RoommateMatchingInterface() {
   )
 }
 
-export default function HokieNest() {
+export default function BedAThon() {
   const [currentView, setCurrentView] = useState<"landing" | "onboarding" | "dashboard">("landing")
   const [user, setUser] = useState<User | null>(null)
   const [selectedProperty, setSelectedProperty] = useState<any>(null)
@@ -605,6 +605,7 @@ export default function HokieNest() {
   const [authLoading, setAuthLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("roommates")
   const [callingPropertyId, setCallingPropertyId] = useState<string | null>(null)
+  const [showCallModal, setShowCallModal] = useState(false)
   const [housingMatches, setHousingMatches] = useState<Record<string, { match_percentage: number; reasons: string[] }>>({})
   
   // Fetch apartment data
@@ -1127,7 +1128,7 @@ export default function HokieNest() {
         const text = await resp.text()
         throw new Error(text || 'Failed to initiate call')
       }
-      alert('Calling you now with our housing agent to get the latest info...')
+      setShowCallModal(true)
     } catch (e) {
       console.error('Failed to start voice call', e)
       alert('Could not place the call. Please try again in a moment.')
@@ -1173,7 +1174,7 @@ export default function HokieNest() {
           <div className="max-w-6xl mx-auto px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center">
-                <h1 className="text-2xl font-bold tracking-tight">HokieNest</h1>
+                <h1 className="text-2xl font-bold tracking-tight">BedAThon</h1>
               </div>
               <div className="flex items-center gap-4">
                 <Button variant="ghost" size="sm" onClick={toggleDarkMode} className="w-9 h-9 p-0">
@@ -1254,7 +1255,7 @@ export default function HokieNest() {
         <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
           <div className="max-w-6xl mx-auto px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
-              <h1 className="text-2xl font-bold tracking-tight">HokieNest</h1>
+              <h1 className="text-2xl font-bold tracking-tight">BedAThon</h1>
               <div className="flex items-center gap-4">
                 <Button variant="ghost" size="sm" onClick={toggleDarkMode} className="w-9 h-9 p-0">
                   {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -1541,7 +1542,7 @@ export default function HokieNest() {
       <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <h1 className="text-2xl font-bold tracking-tight">HokieNest</h1>
+            <h1 className="text-2xl font-bold tracking-tight">BedAThon</h1>
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" onClick={toggleDarkMode} className="w-9 h-9 p-0">
                 {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -1719,202 +1720,208 @@ export default function HokieNest() {
                   <p className="text-muted-foreground">No apartments found</p>
                 </div>
               ) : (
-                properties.map((property) => (
-                <Card key={property.id} className="p-8 card-hover border-border/50">
-                  <div className="flex gap-8">
-                    <img
-                      src={property.imageUrl || `https://picsum.photos/800/600?random=${Math.abs(property.name.split('').reduce((a,b) => a + b.charCodeAt(0), 0)) % 1000}`}
-                      alt={property.name}
-                      className="w-56 h-40 rounded-lg object-cover border border-border/20"
-                    />
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-3">
-                          <h3 className="text-2xl font-bold tracking-tight">{property.name}</h3>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {properties.map((property) => (
+                    <Card key={property.id} className="overflow-hidden card-hover border-border/50 group">
+                      <div className="relative h-48 w-full">
+                        <img
+                          src={property.imageUrl || `https://picsum.photos/800/600?random=${Math.abs(property.name.split('').reduce((a,b) => a + b.charCodeAt(0), 0)) % 1000}`}
+                          alt={property.name}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                        <div className="absolute top-3 right-3">
+                          <Badge variant="secondary" className="bg-background/90 backdrop-blur text-foreground px-3 py-1 text-sm font-semibold">
+                            {property.price}
+                          </Badge>
+                        </div>
+                        <div className="absolute bottom-3 left-3 flex items-center gap-3">
+                          <span className="inline-flex items-center gap-1 text-xs text-white/90">
+                            <MapPin className="h-4 w-4" /> {property.distance}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-xs text-white/90">
+                            {property.busStop ? (
+                              <CheckCircle className="h-4 w-4 text-green-400" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-400" />
+                            )}
+                            {property.busStop || 'No bus stop'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-5 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="text-lg font-bold tracking-tight leading-snug line-clamp-2">{property.name}</h3>
                           {housingMatches[property.name] && (
                             <Badge
                               variant="secondary"
-                              className={`text-sm font-semibold ${getHousingMatchClass(housingMatches[property.name].match_percentage)}`}
+                              className={`text-xs font-semibold ${getHousingMatchClass(housingMatches[property.name].match_percentage)}`}
                             >
                               {housingMatches[property.name].match_percentage}% Match
                             </Badge>
                           )}
                         </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <span className="text-3xl font-bold text-primary">{property.price}</span>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {property.bedrooms} • {property.address}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          <Badge variant="outline" className="text-xs">{property.furniture}</Badge>
+                          <Badge variant="outline" className="text-xs">{property.laundry}</Badge>
+                          <Badge variant="outline" className="text-xs">{property.utilities}</Badge>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                onClick={() => setSelectedProperty(property)}
+                                className="flex-1 h-10 font-medium shadow-md hover:shadow-lg"
+                              >
+                                View Details
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-3xl backdrop-blur-md bg-background/95">
+                              <DialogHeader>
+                                <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                                  {property.name}
+                                  {housingMatches[property.name] && (
+                                    <Badge
+                                      variant="secondary"
+                                      className={`text-sm font-semibold ${getHousingMatchClass(housingMatches[property.name].match_percentage)}`}
+                                    >
+                                      {housingMatches[property.name].match_percentage}% Match
+                                    </Badge>
+                                  )}
+                                </DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-8">
+                                <img
+                                  src={property.imageUrl || `https://picsum.photos/800/600?random=${Math.abs(property.name.split('').reduce((a,b) => a + b.charCodeAt(0), 0)) % 1000}`}
+                                  alt={property.name}
+                                  className="w-full h-80 rounded-lg object-cover border border-border/20"
+                                />
+
+                                <div className="grid grid-cols-2 gap-8">
+                                  <div>
+                                    <h4 className="font-bold mb-4 text-lg">Details</h4>
+                                    <div className="space-y-2 text-sm">
+                                      <p>
+                                        <span className="font-medium">Price:</span> {property.price}
+                                      </p>
+                                      <p>
+                                        <span className="font-medium">Bedrooms:</span> {property.bedrooms}
+                                      </p>
+                                      <p>
+                                        <span className="font-medium">Address:</span> {property.address}
+                                      </p>
+                                      <p>
+                                        <span className="font-medium">Distance:</span> {property.distance}
+                                      </p>
+                                      <p>
+                                        <span className="font-medium">Lease Type:</span> {property.leaseType}
+                                      </p>
+                                      <p>
+                                        <span className="font-medium">Lease Term:</span> {property.leaseTerm}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <h4 className="font-bold mb-4 text-lg">Amenities & Features</h4>
+                                    <div className="space-y-2">
+                                      <p className="text-sm">
+                                        <span className="font-medium">Pets:</span> {property.pets}
+                                      </p>
+                                      <p className="text-sm">
+                                        <span className="font-medium">Parking:</span> {property.parking}
+                                      </p>
+                                      <p className="text-sm">
+                                        <span className="font-medium">Furniture:</span> {property.furniture}
+                                      </p>
+                                      <p className="text-sm">
+                                        <span className="font-medium">Laundry:</span> {property.laundry}
+                                      </p>
+                                      <p className="text-sm">
+                                        <span className="font-medium">Utilities:</span> {property.utilities}
+                                      </p>
+                                      <p className="text-sm">
+                                        <span className="font-medium">Bus Stop:</span> {property.busStop}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-8">
+                                  <div>
+                                    <h4 className="font-bold mb-4 text-lg">Contact & Fees</h4>
+                                    <div className="space-y-2 text-sm">
+                                      <p>
+                                        <span className="font-medium">Phone:</span> {property.phone}
+                                      </p>
+                                      <p>
+                                        <span className="font-medium">Application Fee:</span> {property.applicationFee}
+                                      </p>
+                                      <p>
+                                        <span className="font-medium">Security Deposit:</span> {property.securityDeposit}
+                                      </p>
+                                      <p>
+                                        <span className="font-medium">Additional Fees:</span> {property.additionalFees}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <h4 className="font-bold mb-4 text-lg">Notes</h4>
+                                    <div className="space-y-2">
+                                      <p className="text-sm text-muted-foreground">
+                                        {property.notes || 'No additional notes available'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {housingMatches[property.name]?.reasons?.length ? (
+                                  <div>
+                                    <h4 className="font-bold mb-4 text-lg">Why this matches you</h4>
+                                    <ul className="list-disc list-inside text-sm text-muted-foreground">
+                                      {housingMatches[property.name].reasons.map((r, i) => (
+                                        <li key={i}>{r}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                ) : null}
+
+                                <div className="flex gap-4">
+                                  <Button className="flex-1 gap-2 h-12 font-medium shadow-md hover:shadow-lg transition-all duration-150">
+                                    <Heart className="h-4 w-4" />
+                                    Save
+                                  </Button>
+                                  <Button variant="outline" className="flex-1 h-12 font-medium bg-transparent">
+                                    Share with Roommates
+                                  </Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                           {property.price === 'Contact for pricing' && (
                             <Button
                               variant="outline"
-                              size="sm"
-                              className="h-9 font-medium"
+                              size="icon"
+                              className="h-10 w-10"
                               onClick={() => requestLatestInfoCall(property.id)}
                               disabled={callingPropertyId === property.id}
                             >
                               {callingPropertyId === property.id ? (
-                                <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Calling…</span>
+                                <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <span className="flex items-center gap-2"><Phone className="h-4 w-4" /> Get the latest information</span>
+                                <Phone className="h-4 w-4" />
                               )}
                             </Button>
                           )}
                         </div>
                       </div>
-
-                      <p className="text-muted-foreground mb-4 text-lg">
-                        {property.bedrooms} • {property.address}
-                      </p>
-
-                      <div className="flex items-center gap-6 mb-6">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{property.distance}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {property.busStop ? (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-red-500" />
-                          )}
-                          <span className="text-sm font-medium">{property.busStop || 'No bus stop'}</span>
-                        </div>
-                      </div>
-
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            onClick={() => setSelectedProperty(property)}
-                            className="h-11 px-8 font-medium shadow-md hover:shadow-lg transition-all duration-150"
-                          >
-                            View Details
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-3xl backdrop-blur-md bg-background/95">
-                          <DialogHeader>
-                          <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-                            {property.name}
-                            {housingMatches[property.name] && (
-                              <Badge
-                                variant="secondary"
-                                className={`text-sm font-semibold ${getHousingMatchClass(housingMatches[property.name].match_percentage)}`}
-                              >
-                                {housingMatches[property.name].match_percentage}% Match
-                              </Badge>
-                            )}
-                          </DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-8">
-                            <img
-                              src={property.imageUrl || `https://picsum.photos/800/600?random=${Math.abs(property.name.split('').reduce((a,b) => a + b.charCodeAt(0), 0)) % 1000}`}
-                              alt={property.name}
-                              className="w-full h-80 rounded-lg object-cover border border-border/20"
-                            />
-
-                            <div className="grid grid-cols-2 gap-8">
-                              <div>
-                                <h4 className="font-bold mb-4 text-lg">Details</h4>
-                                <div className="space-y-2 text-sm">
-                                  <p>
-                                    <span className="font-medium">Price:</span> {property.price}
-                                  </p>
-                                  <p>
-                                    <span className="font-medium">Bedrooms:</span> {property.bedrooms}
-                                  </p>
-                                  <p>
-                                    <span className="font-medium">Address:</span> {property.address}
-                                  </p>
-                                  <p>
-                                    <span className="font-medium">Distance:</span> {property.distance}
-                                  </p>
-                                  <p>
-                                    <span className="font-medium">Lease Type:</span> {property.leaseType}
-                                  </p>
-                                  <p>
-                                    <span className="font-medium">Lease Term:</span> {property.leaseTerm}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div>
-                                <h4 className="font-bold mb-4 text-lg">Amenities & Features</h4>
-                                <div className="space-y-2">
-                                  <p className="text-sm">
-                                    <span className="font-medium">Pets:</span> {property.pets}
-                                  </p>
-                                  <p className="text-sm">
-                                    <span className="font-medium">Parking:</span> {property.parking}
-                                  </p>
-                                  <p className="text-sm">
-                                    <span className="font-medium">Furniture:</span> {property.furniture}
-                                  </p>
-                                  <p className="text-sm">
-                                    <span className="font-medium">Laundry:</span> {property.laundry}
-                                  </p>
-                                  <p className="text-sm">
-                                    <span className="font-medium">Utilities:</span> {property.utilities}
-                                  </p>
-                                  <p className="text-sm">
-                                    <span className="font-medium">Bus Stop:</span> {property.busStop}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-8">
-                              <div>
-                                <h4 className="font-bold mb-4 text-lg">Contact & Fees</h4>
-                                <div className="space-y-2 text-sm">
-                                  <p>
-                                    <span className="font-medium">Phone:</span> {property.phone}
-                                  </p>
-                                  <p>
-                                    <span className="font-medium">Application Fee:</span> {property.applicationFee}
-                                  </p>
-                                  <p>
-                                    <span className="font-medium">Security Deposit:</span> {property.securityDeposit}
-                                  </p>
-                                  <p>
-                                    <span className="font-medium">Additional Fees:</span> {property.additionalFees}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div>
-                                <h4 className="font-bold mb-4 text-lg">Notes</h4>
-                                <div className="space-y-2">
-                                  <p className="text-sm text-muted-foreground">
-                                    {property.notes || 'No additional notes available'}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-
-                            {housingMatches[property.name]?.reasons?.length ? (
-                              <div>
-                                <h4 className="font-bold mb-4 text-lg">Why this matches you</h4>
-                                <ul className="list-disc list-inside text-sm text-muted-foreground">
-                                  {housingMatches[property.name].reasons.map((r, i) => (
-                                    <li key={i}>{r}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            ) : null}
-
-                            <div className="flex gap-4">
-                              <Button className="flex-1 gap-2 h-12 font-medium shadow-md hover:shadow-lg transition-all duration-150">
-                                <Heart className="h-4 w-4" />
-                                Save
-                              </Button>
-                              <Button variant="outline" className="flex-1 h-12 font-medium bg-transparent">
-                                Share with Roommates
-                              </Button>
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </div>
-                </Card>
-                ))
+                    </Card>
+                  ))}
+                </div>
               )}
             </div>
           </TabsContent>
@@ -1962,24 +1969,24 @@ export default function HokieNest() {
                   </div>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {apartmentMatches.map((apartment, index) => (
-                    <Card key={index} className="p-6 card-hover border-border/50">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-start">
+                    <Card key={index} className="p-8 card-hover border-border/50">
+                      <div className="space-y-6">
+                        <div className="flex justify-between items-start gap-4">
                           <div>
                             <h4 className="font-bold text-lg">{apartment.apartment_name}</h4>
-                            <p className="text-sm text-muted-foreground">{apartment.apartment_address}</p>
+                            <p className="text-sm text-muted-foreground mt-1">{apartment.apartment_address}</p>
                           </div>
                           <Badge 
                             variant={apartment.match_percentage >= 70 ? "default" : apartment.match_percentage >= 50 ? "secondary" : "destructive"}
-                            className="text-xs"
+                            className="text-xs px-2.5 py-1"
                           >
                             {apartment.match_percentage}% match
                           </Badge>
                         </div>
 
-                        <div className="space-y-2 text-sm">
+                        <div className="space-y-3 text-sm">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Price:</span>
                             <span className="font-medium">{apartment.price}</span>
@@ -1995,14 +2002,14 @@ export default function HokieNest() {
                           {apartment.amenities && apartment.amenities.length > 0 && (
                             <div>
                               <span className="text-muted-foreground">Amenities:</span>
-                              <div className="flex flex-wrap gap-1 mt-1">
+                              <div className="flex flex-wrap gap-2 mt-2">
                                 {apartment.amenities.slice(0, 3).map((amenity: string, i: number) => (
-                                  <Badge key={i} variant="outline" className="text-xs">
+                                  <Badge key={i} variant="outline" className="text-xs px-2 py-0.5">
                                     {amenity}
                                   </Badge>
                                 ))}
                                 {apartment.amenities.length > 3 && (
-                                  <Badge variant="outline" className="text-xs">
+                                  <Badge variant="outline" className="text-xs px-2 py-0.5">
                                     +{apartment.amenities.length - 3} more
                                   </Badge>
                                 )}
@@ -2012,7 +2019,7 @@ export default function HokieNest() {
                         </div>
 
                         {apartment.reasons && apartment.reasons.length > 0 && (
-                          <div className="space-y-1">
+                          <div className="space-y-2 mt-2">
                             <p className="text-xs text-muted-foreground font-medium">Why it matches:</p>
                             {apartment.reasons.slice(0, 2).map((reason: string, i: number) => (
                               <p key={i} className="text-xs text-muted-foreground">• {reason}</p>
@@ -2020,7 +2027,7 @@ export default function HokieNest() {
                           </div>
                         )}
 
-                        <Button className="w-full gap-2">
+                        <Button className="w-full gap-2 h-11 mt-4">
                           <ExternalLink className="h-4 w-4" />
                           View Details
                         </Button>
@@ -2033,6 +2040,42 @@ export default function HokieNest() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Call Status Modal */}
+      {showCallModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-background border border-border rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Call Initiated</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCallModal(false)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Phone className="h-5 w-5 text-primary" />
+                <p className="text-sm">Your call is going through to the apartment center...</p>
+              </div>
+              <div className="bg-muted/50 border border-border/50 rounded-md p-3">
+                <p className="text-sm text-muted-foreground">
+                  <strong>What to expect:</strong> In approximately 5 minutes, you'll receive an email with all the summary information from your call, including pricing details, availability, and next steps.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setShowCallModal(false)}
+              className="w-full"
+            >
+              Got it
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -43,6 +43,15 @@ class OpenAISettings:
     model: str = "gpt-4o-mini"
 
 
+@dataclass
+class EmailSettings:
+    smtp_server: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    email_address: str = ""
+    email_password: str = ""
+    from_name: str = "VT Housing Assistant"
+
+
 def get_twilio_settings() -> TwilioSettings:
     account_sid = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
     auth_token = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
@@ -81,6 +90,25 @@ def get_openai_settings() -> OpenAISettings:
     return OpenAISettings(
         api_key=api_key,
         model=model,
+    )
+
+
+def get_email_settings() -> EmailSettings:
+    email_address = os.getenv("EMAIL_ADDRESS", "").strip()
+    email_password = os.getenv("EMAIL_PASSWORD", "").strip()
+    smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com").strip()
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    from_name = os.getenv("EMAIL_FROM_NAME", "VT Housing Assistant").strip()
+
+    if not email_address or not email_password:
+        raise RuntimeError("Missing required EMAIL_ADDRESS or EMAIL_PASSWORD environment variables")
+
+    return EmailSettings(
+        smtp_server=smtp_server,
+        smtp_port=smtp_port,
+        email_address=email_address,
+        email_password=email_password,
+        from_name=from_name,
     )
 
 

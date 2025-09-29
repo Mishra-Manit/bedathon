@@ -12,7 +12,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "HokieNest - Find Your Perfect Roommate & Home at VT",
+  title: "BedAThon - Find Your Perfect Roommate & Home at VT",
   description: "Virginia Tech student housing and roommate matching platform",
   generator: "v0.app",
 }
